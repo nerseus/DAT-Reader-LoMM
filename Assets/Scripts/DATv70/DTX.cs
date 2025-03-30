@@ -180,7 +180,7 @@ public static class DTX
 
                         // Apply the alpha values to the corresponding pixels
                         texArray[(y * header.m_BaseWidth + x) * 4 + 3] = alpha1;
-                        texArray[(y * header.m_BaseWidth + x + 1) * 4 + 3] = alpha2;
+                        texArray[(y * header.m_BaseWidth + x + 1) * 4 + 3] = alpha1;
                     }
                 }
 

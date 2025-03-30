@@ -281,6 +281,7 @@ namespace LithFAQ
 
                         if (importer.dtxMaterialList.materials.TryGetValue(szTextureName, out var material))
                         {
+                            material.SetFloat("NormalIntensityAmount", 0); // turn off normal calculation for now.
                             matReference = material;
                         }
 
@@ -300,6 +301,7 @@ namespace LithFAQ
                                 if (importer.dtxMaterialList.materials.ContainsKey(matReference.name + "_Chromakey"))
                                 {
                                     matReference = importer.dtxMaterialList.materials[matReference.name + "_Chromakey"];
+                                    matReference.SetFloat("NormalIntensityAmount", 0); // turn off normal calculation for now.
                                 }
                                 else
                                 {
@@ -308,6 +310,7 @@ namespace LithFAQ
                                     mat.name = matReference.name + "_Chromakey";
                                     mat.mainTexture = matReference.mainTexture;
                                     mat.SetInt("_Chromakey", 1);
+                                    mat.SetFloat("NormalIntensityAmount", 0); // turn off normal calculation for now.
                                     matReference = mat;
                                     AddMaterialToMaterialDictionary(mat.name, mat, importer.dtxMaterialList);
                                 }
@@ -884,7 +887,7 @@ namespace LithFAQ
                 //remove first element if its null
                 if (splitStrings[0] == "")
                 {
-                    splitStrings = splitStrings.Skip(0).ToArray();
+                    splitStrings = splitStrings.Skip(1).ToArray();
                 }
                 
 

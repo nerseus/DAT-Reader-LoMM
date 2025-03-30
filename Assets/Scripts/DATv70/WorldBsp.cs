@@ -258,7 +258,18 @@ public class WorldBsp
             m_nTextures = b.ReadInt32();
 
             ReadTextures(ref b);
-            ReadPolies1(ref b);
+
+            //check if m_nVerts is larger than max short
+            if (m_nVerts > sizeof(Int16))
+            {
+                ReadPolies1(ref b, false);
+            }
+            else
+            {
+                ReadPolies1(ref b, true);
+            }
+
+            //ReadPolies1(ref b);
             ReadLeafs(b);
             ReadPlanes(ref b);
             if (datVersion == 70)
@@ -307,25 +318,45 @@ public class WorldBsp
 
     }
 
-    public void ReadPolies1(ref BinaryReader b)
+    public void ReadPolies1(ref BinaryReader b, bool isShort)
     {
         for (int i = 0; i < m_nPolies; i++)
         {
             WorldPoly pPoly = new WorldPoly();
 
-            Int16 nVertices = b.ReadInt16();
-            byte hi = (byte)(nVertices >> 8);
-            byte lo = (byte)(nVertices & 0xff);
+            if (isShort)
+            {
 
-            pPoly.m_nIndexAndNumVerts = i;
-            pPoly.m_nLoVerts = lo;
-            pPoly.m_nHiVerts = hi;
+                Int16 nVertices = b.ReadInt16();
+                byte hi = (byte)(nVertices >> 8);
+                byte lo = (byte)(nVertices & 0xff);
 
-            nVertices = (short)(pPoly.m_nLoVerts + pPoly.m_nHiVerts);
+                pPoly.m_nIndexAndNumVerts = i;
+                pPoly.m_nLoVerts = lo;
+                pPoly.m_nHiVerts = hi;
 
-            pPoly.m_nIndexAndNumVerts = unchecked((pPoly.m_nIndexAndNumVerts & 0xFFFFFF00) | (nVertices & 0xFF));
+                nVertices = (short)(pPoly.m_nLoVerts + pPoly.m_nHiVerts);
 
-            m_pPolies.Add(pPoly);
+                pPoly.m_nIndexAndNumVerts = unchecked((pPoly.m_nIndexAndNumVerts & 0xFFFFFF00) | (nVertices & 0xFF));
+
+                m_pPolies.Add(pPoly);
+            }
+            else
+            {
+                Int32 nVertices = b.ReadInt16();
+                byte hi = (byte)(nVertices >> 8);
+                byte lo = (byte)(nVertices & 0xff);
+
+                pPoly.m_nIndexAndNumVerts = i;
+                pPoly.m_nLoVerts = lo;
+                pPoly.m_nHiVerts = hi;
+
+                nVertices = (Int32)(pPoly.m_nLoVerts + pPoly.m_nHiVerts);
+
+                pPoly.m_nIndexAndNumVerts = unchecked((pPoly.m_nIndexAndNumVerts & 0xFFFFFF00) | (nVertices & 0xFF));
+
+                m_pPolies.Add(pPoly);
+            }
         }
     }
 

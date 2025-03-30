@@ -131,6 +131,8 @@ public class ABCModelReader : MonoBehaviour
         }
 
         Model model = new Model();
+
+        String szExtension = Path.GetExtension(mDef.szModelFilePath);
         model.Name = Path.GetFileNameWithoutExtension(mDef.szModelFilePath);
 
         if (mDef.szModelFilePath == null)
@@ -149,6 +151,19 @@ public class ABCModelReader : MonoBehaviour
             while (nextSectionOffset != -1)
             {
                 reader.BaseStream.Seek(nextSectionOffset, SeekOrigin.Begin);
+                
+                if (szExtension.Contains("ltb"))
+                {
+                    //check if we have a pre Jupiter LTB
+                    string szLtbHeader = ReadString(reader);
+
+                    if (szLtbHeader == "LTBHeader")
+                    {
+                        nextSectionOffset = reader.ReadInt32();
+                        reader.BaseStream.Position = nextSectionOffset;
+                    }
+                }
+                
                 string sectionName = ReadString(reader);
                 nextSectionOffset = reader.ReadInt32();
                 if (sectionName == "Header")

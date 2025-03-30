@@ -45,7 +45,7 @@ public class LithObject
 
 public class VertexColor
 {
-    public Int16 nVerts;
+    public UInt32 nVerts;
     public byte red;
     public byte green;
     public byte blue;
@@ -53,7 +53,7 @@ public class VertexColor
 
 public class DiskRelVert
 {
-    public Int16 nRelVerts;
+    public Int32 nRelVerts;
 }
 
 public class Leafs

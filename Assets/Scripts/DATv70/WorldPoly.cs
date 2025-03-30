@@ -72,15 +72,29 @@ public class WorldPoly
 
         int verts = GetNumVertices();
         m_aVertexColorList = new List<VertexColor>();
-        for(int t = 0; t < verts; t++)
+
+        if(verts > 65534)
         {
             VertexColor _vertexColors = new VertexColor();
-            _vertexColors.nVerts = b.ReadInt16();
+            _vertexColors.nVerts = b.ReadUInt32();
             _vertexColors.red = b.ReadByte();
             _vertexColors.green = b.ReadByte();
             _vertexColors.blue = b.ReadByte();
             m_aVertexColorList.Add(_vertexColors);
         }
+        else
+        {
+            for (int t = 0; t < verts; t++)
+            {
+                VertexColor _vertexColors = new VertexColor();
+                _vertexColors.nVerts = b.ReadUInt16();
+                _vertexColors.red = b.ReadByte();
+                _vertexColors.green = b.ReadByte();
+                _vertexColors.blue = b.ReadByte();
+                m_aVertexColorList.Add(_vertexColors);
+            }
+        }
+        
         FillRelVerts();  
     }
 
@@ -128,7 +142,7 @@ public class WorldPoly
         for(int t = 0; t < verts; t++)
         {
             VertexColor _vertexColors = new VertexColor();
-            _vertexColors.nVerts = b.ReadInt16();
+            _vertexColors.nVerts = (uint)b.ReadInt16();
             _vertexColors.red = b.ReadByte();
             _vertexColors.green = b.ReadByte();
             _vertexColors.blue = b.ReadByte();
@@ -163,7 +177,7 @@ public class WorldPoly
         for (int t = 0; t < verts; t++)
         {
             VertexColor _vertexColors = new VertexColor();
-            _vertexColors.nVerts = b.ReadInt16();
+            _vertexColors.nVerts = (uint)b.ReadInt16();
             _vertexColors.red = b.ReadByte();
             _vertexColors.green = b.ReadByte();
             _vertexColors.blue = b.ReadByte();

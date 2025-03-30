@@ -10,10 +10,6 @@ using static LithFAQ.LTTypes;
 using static LithFAQ.LTUtils;
 using static Utility.MaterialSafeMeshCombine;
 using static DTX;
-using TMPro;
-using System.Xml.Linq;
-using UnityEngine.Profiling;
-
 
 
 namespace LithFAQ
@@ -233,6 +229,16 @@ namespace LithFAQ
                             continue;
                         }
 
+                        if(importer.eGame == Game.GLOBALOPS)
+                        {
+                            if( tBSP.m_aszTextureNames[tPoly.GetSurface(tBSP).m_nTexture].Contains("sector.dtx", StringComparison.OrdinalIgnoreCase) ||
+                                tBSP.m_aszTextureNames[tPoly.GetSurface(tBSP).m_nTexture].Contains("Sound_Environment.dtx", StringComparison.OrdinalIgnoreCase) ||
+                                tBSP.m_aszTextureNames[tPoly.GetSurface(tBSP).m_nTexture].Contains("Useable.dtx", StringComparison.OrdinalIgnoreCase))
+                            {
+                                continue;
+                            }
+                        }
+
                         float texWidth = 256f;
                         float texHeight = 256f;
 
@@ -330,7 +336,7 @@ namespace LithFAQ
                             // Do the thing
                             for (int vCount = 0; vCount < tPoly.m_nLoVerts; vCount++)
                             {
-                                WorldVertex tVertex = tBSP.m_pPoints[tPoly.m_aVertexColorList[vCount].nVerts];
+                                WorldVertex tVertex = tBSP.m_pPoints[(int)tPoly.m_aVertexColorList[vCount].nVerts];
 
                                 Vector3 data = tVertex.m_vData;
                                 data *= UNITYSCALEFACTOR;
@@ -502,8 +508,16 @@ namespace LithFAQ
             {
                 if (mats.Contains(szTextureName))
                 {
-                    texWidth = importer.dtxMaterialList.texSize[szTextureName].engineWidth;
-                    texHeight = importer.dtxMaterialList.texSize[szTextureName].engineHeight;
+                    if(!importer.dtxMaterialList.texSize.ContainsKey(szTextureName))
+                    {
+                        texWidth = 256f;
+                        texHeight = 256f;
+                    }
+                    else
+                    {
+                        texWidth = importer.dtxMaterialList.texSize[szTextureName].engineWidth;
+                        texHeight = importer.dtxMaterialList.texSize[szTextureName].engineHeight;
+                    }
                 }
             }
         }
@@ -866,7 +880,7 @@ namespace LithFAQ
 
                 }
 
-                if (obj.objectName == "PropType")
+                if (obj.objectName == "PropType" || obj.objectName == "CProp")
                 {
                     string szName = "";
 

@@ -2688,7 +2688,7 @@
     "m_DefaultRefNameVersion": 1,
     "m_RefNameGeneratedByDisplayName": "Normal Intensity Amount",
     "m_DefaultReferenceName": "_Normal_Intensity_Amount",
-    "m_OverrideReferenceName": "Vector1_d01ce273f4fd4acd8288f88d310a35f6",
+    "m_OverrideReferenceName": "NormalIntensityAmount",
     "m_GeneratePropertyBlock": true,
     "m_UseCustomSlotLabel": false,
     "m_CustomSlotLabel": "",
