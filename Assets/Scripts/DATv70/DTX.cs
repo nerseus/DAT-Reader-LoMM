@@ -1,17 +1,24 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.InteropServices;
 using UnityEngine;
 
 public static class DTX
 {
     public static int identElement = 2;
 
+    public static int DTX1 = -2;
+    public static int DTX15 = -3;
+    public static int DTX2 = -5;
+	
+
     [Flags]
     public enum DTXFlags
     {
         FULLBRIGHT = 0x01,
         PREFER16BIT = 0x02,
+        ALPHA = 0X02, //DTX1
         UNK1 = 0x04,
         UNK2 = 0x08,
         UNK3 = 0x10,
@@ -59,6 +66,14 @@ public static class DTX
         public int engineWidth;
         public int engineHeight;
     }
+
+    public struct DTXColor
+    {
+        public byte a;
+        public byte r;
+        public byte g;
+        public byte b;
+    }
     
     public enum DTXReturn
     {
@@ -99,8 +114,85 @@ public static class DTX
 
         DTX.DTXHeader header = ReadDTXHeader(b);
 
-        b.BaseStream.Position = 164; // Jump to texture data, ignore command strings (always 128 bytes)
-        byte[] texArray = b.ReadBytes((int)b.BaseStream.Length - 164);
+        byte[] texArray = { 0x00 };
+
+        if (header.m_Version == DTX1)
+        {
+            byte[] pixelArray = new byte[header.m_BaseWidth * header.m_BaseHeight];
+            b.BaseStream.Position += 8; // Jump to color section
+
+            // Color section always has 256 entries
+            DTXColor[] aColors = new DTXColor[256];
+
+            int structSize = Marshal.SizeOf<DTXColor>();
+            byte[] colorBytes = new byte[structSize * 256];
+            b.Read(colorBytes, 0, colorBytes.Length);
+
+            GCHandle handle = GCHandle.Alloc(aColors, GCHandleType.Pinned);
+            try
+            {
+                Marshal.Copy(colorBytes, 0, handle.AddrOfPinnedObject(), colorBytes.Length);
+            }
+            finally
+            {
+                handle.Free();
+            }
+
+            // Read the first mipmap header.m_BaseWidth x header.m_BaseHeight into pixelArray
+            b.Read(pixelArray, 0, header.m_BaseWidth * header.m_BaseHeight);
+
+            texArray = new byte[header.m_BaseWidth * header.m_BaseHeight * 4]; //argb -> bgra
+
+            for (int y = 0; y < header.m_BaseHeight; y++)
+            {
+                for (int x = 0; x < header.m_BaseWidth; x++)
+                {
+                    int index = y * header.m_BaseWidth + x;
+                    DTXColor color = aColors[pixelArray[index]];
+                    int texIndex = index * 4;
+                    texArray[texIndex] = color.b;
+                    texArray[texIndex + 1] = color.g;
+                    texArray[texIndex + 2] = color.r;
+                    texArray[texIndex + 3] = color.a;
+                }
+            }
+
+            if ((header.m_IFlags & (int)DTXFlags.ALPHA) != 0 )
+            {
+                //skip the remaining 3 mip maps
+                b.BaseStream.Position += (header.m_BaseWidth * header.m_BaseHeight) / 4;
+                b.BaseStream.Position += (header.m_BaseWidth * header.m_BaseHeight) / 16;
+                b.BaseStream.Position += (header.m_BaseWidth * header.m_BaseHeight) / 64;
+
+                for (int y = 0; y < header.m_BaseHeight; y++)
+                {
+                    for (int x = 0; x < header.m_BaseWidth; x += 2) // increment by 2 because 4 bpp alpha
+                    {
+                        byte alphaByte = b.ReadByte();
+
+                        // Unpack the two 4-bit alpha values
+                        byte alpha1 = (byte)((alphaByte & 0xF0) >> 4); // alpha for the first pixel
+                        byte alpha2 = (byte)(alphaByte & 0x0F); // alpha for the second pixel
+
+                        // Scale up the 4-bit alpha values to 8 bits
+                        alpha1 = (byte)(alpha1 * 0x11);
+                        alpha2 = (byte)(alpha2 * 0x11);
+
+                        // Apply the alpha values to the corresponding pixels
+                        texArray[(y * header.m_BaseWidth + x) * 4 + 3] = alpha1;
+                        texArray[(y * header.m_BaseWidth + x + 1) * 4 + 3] = alpha1;
+                    }
+                }
+
+            }
+
+        }
+        else
+        {
+            b.BaseStream.Position = 164; // Jump to texture data, ignore command strings (always 128 bytes)
+            texArray = b.ReadBytes((int)b.BaseStream.Length - 164);
+        }
+
         b.Close();
 
         TextureFormat textureFormat = GetTextureFormat(header.m_Extra[identElement]);
@@ -114,7 +206,10 @@ public static class DTX
             engineHeight = header.m_BaseHeight
         };
 
-        ApplyMipMapOffset(header, ref texInfo);
+        if (header.m_Version == DTX2)
+        {
+            ApplyMipMapOffset(header, ref texInfo);
+        }
 
         //do we need to apply fullbright?
         if ((header.m_IFlags & (int)DTXFlags.FULLBRIGHT) != 0)
@@ -192,8 +287,17 @@ public static class DTX
             textureFormat = TextureFormat.DXT5;
  
         texture2D = new Texture2D(header.m_BaseWidth, header.m_BaseHeight, textureFormat, false);
-        texture2D.LoadRawTextureData(texArray);
-        texture2D.Apply();
+
+        try
+        {
+            texture2D.LoadRawTextureData(texArray);
+            texture2D.Apply();
+        }
+        catch (Exception ex)
+        {
+            Debug.LogException(ex);
+            return null;
+        }
         return texture2D;
     }
 
