@@ -38,6 +38,7 @@ namespace LithFAQ
         KISS,
         CONTRACTJACK,
         DIEHARD,
+        LOMM
     }
     
     public static class GlobalStuff
@@ -50,7 +51,8 @@ namespace LithFAQ
             "Shogo: Mobile Armor Division",
             "KISS Psycho Circus",
             "Contract Jack",
-            "Die Hard: Nakatomi Plaza"
+            "Die Hard: Nakatomi Plaza",
+            "Legends of Might & Magic (LoMM)"
         };
 
     }

@@ -163,7 +163,7 @@ namespace LithFAQ
 
                 try
                 {
-                    tBSP.Load(ref b, true);
+                    tBSP.Load(ref b, true, importer.eGame);
                     bspListTest.Add(tBSP);
                 }
                 catch (Exception e)

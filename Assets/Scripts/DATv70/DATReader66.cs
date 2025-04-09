@@ -163,7 +163,7 @@ namespace LithFAQ
 
                 try
                 {
-                    tBSP.Load(ref b, true);
+                    tBSP.Load(ref b, true, importer.eGame);
                     bspListTest.Add(tBSP);
                 }
                 catch (Exception e)
@@ -938,12 +938,18 @@ namespace LithFAQ
                 }
 
 
-                    var g = GameObject.Find("objects");
+                var g = GameObject.Find("objects");
                 tempObject.transform.SetParent(g.transform);
-                g.transform.localScale = Vector3.one;
 
+                var scale = Vector3.one;
+                if (obj.options.ContainsKey("Scale"))
+                {
+                    float theScale = (float)obj.options["Scale"];
+                    scale = scale * theScale;
+                }
+                
+                g.transform.localScale = scale;
             }
-
 
             //disable unity's nastyness
             //RenderSettings.ambientLight = Color.black;
@@ -959,30 +965,33 @@ namespace LithFAQ
 
             var worldPropertiesArray = worldReader.WorldProperties.Split(';');
 
+            bool setAmbientLight = false;
             foreach (var property in worldPropertiesArray)
             {
-                if (!property.Contains("AmbientLight"))
+                if (property.Contains("AmbientLight"))
                 {
-                    SetDefaultAmbientLight();
-                    continue;
+                    var splitStrings = property.Trim().Split(' ');
+
+                    if (splitStrings.Length < 4)
+                    {
+                        continue;
+                    }
+
+                    Vector3 vAmbientRGB = Vector3.Normalize(
+                        new Vector3(
+                            float.Parse(splitStrings[1]),
+                            float.Parse(splitStrings[2]),
+                            float.Parse(splitStrings[3])));
+
+                    var color = new Color(vAmbientRGB.x, vAmbientRGB.y, vAmbientRGB.z, 1);
+                    SetAmbientLight(color);
+                    setAmbientLight = true;
                 }
+            }
 
-                var splitStrings = property.Split(' ');
-
-                if (splitStrings.Length < 4)
-                {
-                    SetDefaultAmbientLight();
-                    continue;
-                }
-
-                Vector3 vAmbientRGB = Vector3.Normalize(new Vector3(
-                    float.Parse(splitStrings[1]),
-                    float.Parse(splitStrings[2]),
-                    float.Parse(splitStrings[3])
-                ));
-
-                var color = new Color(vAmbientRGB.x, vAmbientRGB.y, vAmbientRGB.z, 1);
-                SetAmbientLight(color);
+            if (!setAmbientLight)
+            {
+                SetDefaultAmbientLight();
             }
         }
 

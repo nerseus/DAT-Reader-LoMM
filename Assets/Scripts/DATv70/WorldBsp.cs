@@ -1,3 +1,4 @@
+using LithFAQ;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -40,7 +41,7 @@ public class WorldBsp
     }
 
     public int datVersion;
-    public int Load(ref BinaryReader b, bool doIt)
+    public int Load(ref BinaryReader b, bool doIt, Game eGame)
     {
         int dwUnknown, dwUnknown2, dwUnknown3 = 0;
         Int16 nNameLen = 0;
@@ -80,7 +81,7 @@ public class WorldBsp
 
         ReadTextures(ref b);
         ReadPolies1(ref b);
-        ReadLeafs(ref b);
+        ReadLeafs(ref b, eGame);
         ReadPlanes(ref b);
         if(datVersion == 70)
             ReadSurfaces70(ref b);
@@ -136,7 +137,7 @@ public class WorldBsp
         }
     }
 
-    public void ReadLeafs(ref BinaryReader b)
+    public void ReadLeafs(ref BinaryReader b, Game eGame)
     {
         if(m_nLeafs > 0)
         {
@@ -167,17 +168,36 @@ public class WorldBsp
                 }
 
                 pLeaf.m_nPoliesCount = b.ReadInt32();
-                if(pLeaf.m_nPoliesCount > 0)
+
+                if (eGame == Game.LOMM)
                 {
-                    Array.Resize(ref pLeaf.m_pPolies, pLeaf.m_nPoliesCount * 4);
-
-                    for(int y = 0; y < pLeaf.m_pPolies.Length; y++)
+                    Int16 unknown = b.ReadInt16();
+                    if (pLeaf.m_nPoliesCount > 0)
                     {
-                        pLeaf.m_pPolies[y] = b.ReadInt16();
-                    }
-                }
+                        Array.Resize(ref pLeaf.m_pPolies, pLeaf.m_nPoliesCount * 2);
 
-                pLeaf.m_nCardinal1 = b.ReadInt32();
+                        for (int y = 0; y < pLeaf.m_pPolies.Length; y++)
+                        {
+                            pLeaf.m_pPolies[y] = b.ReadInt16();
+                        }
+                    }
+
+                    pLeaf.m_nCardinal1 = b.ReadInt16();
+                }
+                else
+                {
+                    if (pLeaf.m_nPoliesCount > 0)
+                    {
+                        Array.Resize(ref pLeaf.m_pPolies, pLeaf.m_nPoliesCount * 4);
+
+                        for (int y = 0; y < pLeaf.m_pPolies.Length; y++)
+                        {
+                            pLeaf.m_pPolies[y] = b.ReadInt16();
+                        }
+                    }
+
+                    pLeaf.m_nCardinal1 = b.ReadInt32();
+                }
 
                 m_pLeafs.Add(pLeaf);
              }
