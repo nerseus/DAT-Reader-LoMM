@@ -147,14 +147,14 @@ public class WorldBsp
 
                 pLeaf.m_nNumLeafLists = b.ReadInt16();
 
-                if(pLeaf.m_nNumLeafLists == 0xFFFF)
+                if(pLeaf.m_nNumLeafLists == -1)
                 {
                     pLeaf.m_nLeafListIndex = b.ReadInt16();
                 }
 
                 else if(pLeaf.m_nNumLeafLists > 0)
                 {
-                    for(int t = 0; t < pLeaf.m_nNumLeafLists; t++)
+                    for(Int16 leafListIndex = 0; leafListIndex < pLeaf.m_nNumLeafLists; leafListIndex++)
                     {
                         LeafList pLeafList = new LeafList();
 

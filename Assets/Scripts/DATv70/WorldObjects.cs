@@ -58,7 +58,7 @@ public class DiskRelVert
 
 public class Leafs
 {
-    public int m_nNumLeafLists;
+    public Int16 m_nNumLeafLists;
     public Int16 m_nLeafListIndex;
     public List<LeafList> m_pLeafLists = new List<LeafList>();
 
