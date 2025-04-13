@@ -101,7 +101,6 @@ namespace LithFAQ
                 DestroyImmediate(mat);
             }
 
-            importer.dtxMaterialList = null;
             importer.dtxMaterialList = new DTX.DTXMaterial();
 
             Resources.UnloadUnusedAssets();
@@ -235,7 +234,7 @@ namespace LithFAQ
                         float texWidth = 256f;
                         float texHeight = 256f;
 
-                        string szTextureName = Path.GetFileName(tBSP.m_aszTextureNames[tBSP.m_pSurfaces[tPoly.m_nSurface].m_nTexture]);
+                        string textureName = tBSP.m_aszTextureNames[tBSP.m_pSurfaces[tPoly.m_nSurface].m_nTexture];
 
                         //skip sky portals
                         if ((tPoly.GetSurface(tBSP).m_nFlags & (int)BitMask.SKY) == (int)BitMask.SKY)
@@ -243,7 +242,7 @@ namespace LithFAQ
                             continue;
                         }
 
-                        SetLithTechInternalTextureSize(ref texWidth, ref texHeight, szTextureName);
+                        SetLithTechInternalTextureSize(ref texWidth, ref texHeight, textureName);
 
                         //Convert OPQ to UV magic
                         Vector3 center = tPoly.m_vCenter;
@@ -259,7 +258,7 @@ namespace LithFAQ
 
                         Material matReference = importer.defaultMaterial;
 
-                        if (importer.dtxMaterialList.materials.TryGetValue(szTextureName, out var material))
+                        if (importer.dtxMaterialList.materials.TryGetValue(textureName, out var material))
                         {
                             matReference = material;
                         }
@@ -269,7 +268,7 @@ namespace LithFAQ
                         if (possibleTWM)
                         {
 
-                            if (szTextureName.Contains("invisible", StringComparison.OrdinalIgnoreCase))
+                            if (textureName.Contains("invisible", StringComparison.OrdinalIgnoreCase))
                             {
                                 continue;
                             }
@@ -487,7 +486,7 @@ namespace LithFAQ
             //Load texture
             foreach (var tex in tBSP.m_aszTextureNames)
             {
-                DTX.LoadDTX(importer.szProjectPath + "\\" + tex, ref importer.dtxMaterialList, importer.szProjectPath);
+                DTX.LoadDTX(tex, importer.dtxMaterialList, importer.szProjectPath);
             }
         }
 
@@ -495,13 +494,10 @@ namespace LithFAQ
         {
             //Lookup the width and height the engine uses to calculate UV's
             //UI Mipmap Offset changes this
-            foreach (var mats in importer.dtxMaterialList.materials.Keys)
+            if (importer.dtxMaterialList.texSize.ContainsKey(szTextureName))
             {
-                if (mats.Contains(szTextureName))
-                {
-                    texWidth = importer.dtxMaterialList.texSize[szTextureName].engineWidth;
-                    texHeight = importer.dtxMaterialList.texSize[szTextureName].engineHeight;
-                }
+                texWidth = importer.dtxMaterialList.texSize[szTextureName].engineWidth;
+                texHeight = importer.dtxMaterialList.texSize[szTextureName].engineHeight;
             }
         }
 
@@ -615,10 +611,9 @@ namespace LithFAQ
 
                     foreach (var subItem in obj.options)
                     {
-
                         if (subItem.Key == "Sound")
                         {
-                            szFilePath = importer.szProjectPath + "\\" + subItem.Value;
+                            szFilePath = Path.Combine(importer.szProjectPath, subItem.Value.ToString());
                         }
 
                         if (subItem.Key == "Loop")
@@ -819,13 +814,12 @@ namespace LithFAQ
 
                     var temp = importer.CreateModelDefinition(szName, ModelType.Character, obj.options);
 
-                    var gos = abc.LoadABC(temp);
+                    var gos = abc.LoadABC(temp, tempObject.transform);
 
                     if (gos != null)
                     {
                         gos.transform.position = tempObject.transform.position;
                         gos.transform.eulerAngles = rot;
-                        gos.transform.parent = tempObject.transform;
                         gos.tag = "NoRayCast";
                     }
 
@@ -849,13 +843,12 @@ namespace LithFAQ
 
                     var temp = importer.CreateModelDefinition(szName, ModelType.Pickup, obj.options);
 
-                    var gos = abc.LoadABC(temp);
+                    var gos = abc.LoadABC(temp, tempObject.transform);
 
                     if (gos != null)
                     {
                         gos.transform.position = tempObject.transform.position;
                         gos.transform.eulerAngles = rot;
-                        gos.transform.parent = tempObject.transform;
                         gos.tag = "NoRayCast";
                         gos.layer = 2;
                     }
@@ -876,13 +869,12 @@ namespace LithFAQ
 
                     var temp = importer.CreateModelDefinition(szName, ModelType.Pickup, obj.options);
 
-                    var gos = abc.LoadABC(temp);
+                    var gos = abc.LoadABC(temp, tempObject.transform);
 
                     if (gos != null)
                     {
                         gos.transform.position = tempObject.transform.position;
                         gos.transform.eulerAngles = rot;
-                        gos.transform.parent = tempObject.transform;
                         gos.tag = "NoRayCast";
                         gos.layer = 2;
                     }
@@ -902,13 +894,12 @@ namespace LithFAQ
 
                     var temp = importer.CreateModelDefinition(szName, ModelType.PropType, obj.options);
 
-                    var gos = abc.LoadABC(temp);
+                    var gos = abc.LoadABC(temp, tempObject.transform);
 
                     if (gos != null)
                     {
                         gos.transform.position = tempObject.transform.position;
                         gos.transform.eulerAngles = rot;
-                        gos.transform.parent = tempObject.transform;
                         gos.tag = "NoRayCast";
                     }
                 }
@@ -941,13 +932,12 @@ namespace LithFAQ
 
                     var temp = importer.CreateModelDefinition(szName, ModelType.Prop, obj.options);
 
-                    var gos = abc.LoadABC(temp);
+                    var gos = abc.LoadABC(temp, tempObject.transform);
 
                     if (gos != null)
                     {
                         gos.transform.position = tempObject.transform.position;
                         gos.transform.eulerAngles = rot;
-                        gos.transform.parent = tempObject.transform;
                         gos.tag = "NoRayCast";
                     }
                 }

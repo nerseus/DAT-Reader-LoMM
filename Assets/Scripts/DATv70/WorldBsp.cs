@@ -7,6 +7,8 @@ using static LithFAQ.LTUtils;
 
 public class WorldBsp
 {
+    public static readonly string BrightGreenTexture = "textures\\leveltextxures\\misc\\greenscreen.dtx";
+
     public Int16 m_nWorldInfoFlags;
     public String m_szWorldName;
     public int       m_nPoints;    
@@ -80,6 +82,10 @@ public class WorldBsp
         m_nTextures = b.ReadInt32();
 
         ReadTextures(ref b);
+        // TTTT Fake one extra texture:
+        m_aszTextureNames.Add(BrightGreenTexture); //add it to the list!
+
+
         ReadPolies1(ref b);
         ReadLeafs(ref b, eGame);
         ReadPlanes(ref b);
