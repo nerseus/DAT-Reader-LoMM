@@ -29,7 +29,7 @@ namespace LithFAQ
         public float UNITYSCALEFACTOR = 0.01f; //default scale to fit in Unity's world.
         public Importer importer;
 
-        public ABCModelReader abc;
+        public ModelToGameObject abc;
 
 
         public void OnEnable()
@@ -47,7 +47,7 @@ namespace LithFAQ
             importer = GetComponent<Importer>();
             gameObject.AddComponent<Dispatcher>();
 
-            abc = gameObject.AddComponent<ABCModelReader>();
+            abc = gameObject.AddComponent<ModelToGameObject>();
         }
 
         public void ClearLevel()

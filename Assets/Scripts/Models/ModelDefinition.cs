@@ -1,8 +1,5 @@
-using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
 using UnityEngine;
-
 
 public enum ModelType
 {
@@ -25,7 +22,7 @@ public class ModelDefinition
     public string szModelFilePath = string.Empty;
     public List<string> szModelTextureName = new List<string>();
     public ModelType modelType = ModelType.None;
-    public Model model = new Model();
+    public ABCModel model = new ABCModel();
     public GameObject rootObject;
     public bool bMoveToFloor = false;
     public bool bChromakey = false;
