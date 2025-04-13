@@ -1587,37 +1587,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 650687936}
   m_CullTransparentMesh: 1
---- !u!1 &668269740
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 668269741}
-  m_Layer: 0
-  m_Name: TranslucentWorldModel105949
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &668269741
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 668269740}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &761841656
 GameObject:
   m_ObjectHideFlags: 0
@@ -3096,15 +3065,16 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   DatReader: {fileID: 0}
-  szProjectPath: 
-  szFileName: 
-  nVersion: 0
   RuntimeGizmoPrefab: {fileID: 3749955941053583291, guid: 42ac43bc1e4026d4d80ae9b155d75b4f, type: 3}
   defaultMaterial: {fileID: 2100000, guid: 0c4b0ad432174f248b2289c5f7ae49c4, type: 2}
   defaultColor: {r: 0.62471354, g: 0.9245283, b: 0.6236205, a: 1}
   infoBox: {fileID: 47801828}
   loadingUI: {fileID: 2129033885}
   prefab: {fileID: 675535359549295461, guid: 5b843dc09c537fb4dbb0bbd0e6f4e751, type: 3}
+  szProjectPath: 
+  szFileName: 
+  nVersion: 0
+  nSelectedGame: 0
 --- !u!114 &1499524487
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4790,4 +4760,3 @@ SceneRoots:
   - {fileID: 4519903452530450002}
   - {fileID: 70060733519956030}
   - {fileID: 1278155342}
-  - {fileID: 668269741}

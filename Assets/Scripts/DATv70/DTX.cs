@@ -108,6 +108,14 @@ public static class DTX
         public int engineWidth;
         public int engineHeight;
     }
+
+    public struct DTXColor
+    {
+        public byte a;
+        public byte r;
+        public byte g;
+        public byte b;
+    }
     
     public enum DTXReturn
     {
@@ -239,6 +247,10 @@ public static class DTX
             }
 
             path = defaultTexturePath;
+        }
+        if (header.m_Version == DTX2)
+        {
+            ApplyMipMapOffset(header, ref texInfo);
         }
 
         var unityDTX = LoadDTX(projectPath, path);
@@ -605,11 +617,19 @@ public static class DTX
         //TODO: Add full support for DXT3. 4 bit alpha
         if (textureFormat == TextureFormat.DXT5Crunched)
             textureFormat = TextureFormat.DXT5;
+ 
+        texture2D = new Texture2D(header.m_BaseWidth, header.m_BaseHeight, textureFormat, false);
 
-        texture2D = new Texture2D(header.BaseWidth, header.BaseHeight, textureFormat, false);
-        //texture2D.LoadImage(texArray);
-        texture2D.LoadRawTextureData(texArray);
-        texture2D.Apply();
+        try
+        {
+            texture2D.LoadRawTextureData(texArray);
+            texture2D.Apply();
+        }
+        catch (Exception ex)
+        {
+            Debug.LogException(ex);
+            return null;
+        }
         return texture2D;
     }
 

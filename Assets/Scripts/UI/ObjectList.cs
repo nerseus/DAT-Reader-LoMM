@@ -133,7 +133,11 @@ public class ObjectList : MonoBehaviour
                 IDATReader reader = (IDATReader)importer.DatReader;
 
                 var temp = reader.GetWorldObjects();
-                
+
+                if (temp == null || temp.obj == null)
+                {
+                    return;
+                }
                 foreach (var item in temp.obj)
                 {
                     szWorldObjectNameList.Add(item.options["Name"].ToString());

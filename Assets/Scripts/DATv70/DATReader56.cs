@@ -10,12 +10,15 @@ using static LithFAQ.LTTypes;
 using static LithFAQ.LTUtils;
 using static Utility.MaterialSafeMeshCombine;
 using static DTX;
-using System.Runtime.InteropServices;
+using TMPro;
+using System.Xml.Linq;
+using UnityEngine.Profiling;
+
 
 
 namespace LithFAQ
 {
-    public class DATReader70 : MonoBehaviour, IDATReader
+    public class DATReader56 : MonoBehaviour, IDATReader
     {
         public WorldObjects LTGameObjects = new WorldObjects();
         WorldReader worldReader = new WorldReader();
@@ -98,6 +101,7 @@ namespace LithFAQ
                 DestroyImmediate(mat);
             }
 
+            importer.dtxMaterialList = null;
             importer.dtxMaterialList = new DTX.DTXMaterial();
 
             Resources.UnloadUnusedAssets();
@@ -132,24 +136,47 @@ namespace LithFAQ
             worldReader.ReadHeader(ref b);
             worldReader.ReadPropertiesAndExtents(ref b);
 
-            WorldTree wTree = new WorldTree();
+            WorldModelList WMList = new WorldModelList();
+            WMList.pModelList = new List<WorldData>();
 
-            wTree.ReadWorldTree(ref b);
+
+            b.BaseStream.Position = worldReader.WorldHeader.dwRenderDataPos;
+            //The first world model is the root, the base level itself.
+
+            WorldBsp pBSP = new WorldBsp();
+
+            pBSP.datVersion = worldReader.WorldHeader.nVersion;
+
+            WorldData pWorldDataRoot = new WorldData();
+
+            pWorldDataRoot.NextPos = b.ReadInt32();
+            b.BaseStream.Position += sizeof(Int32) * 8; //skip the padding
+
+            WMList.pModelList.Add(pWorldDataRoot);
+
+            for (int i = 0; i < 1; i++)
+            {
+                pBSP.Load(ref b, true);
+                pBSP.m_szWorldName = "PhysicsBSP";
+                bspListTest.Add(pBSP);
+            }
+            //Now we are in the BSP data
+
+            await System.Threading.Tasks.Task.Yield();
+
+            //read the rest of the world models, non bsp
+            //b.BaseStream.Position = pWorldDataRoot.NextPos;
 
             //read world models...
-            byte[] anDummy = new byte[32];
             int nNextWMPosition = 0;
 
             WorldData pWorldData = new WorldData();
-
-            WorldModelList WMList = new WorldModelList();
-            WMList.pModelList = new List<WorldData>();
             WMList.nNumModels = b.ReadInt32();
 
             for (int i = 0; i < WMList.nNumModels; i++)
             {
                 nNextWMPosition = b.ReadInt32();
-                anDummy = b.ReadBytes(anDummy.Length);
+                b.BaseStream.Position += sizeof(Int32) * 8; //skip the padding
 
                 pWorldData.NextPos = nNextWMPosition;
                 WMList.pModelList.Add(pWorldData);
@@ -159,7 +186,7 @@ namespace LithFAQ
 
                 try
                 {
-                    tBSP.Load(ref b, true, importer.eGame);
+                    tBSP.Load(ref b, true);
                     bspListTest.Add(tBSP);
                 }
                 catch (Exception e)
@@ -180,10 +207,10 @@ namespace LithFAQ
             importer.loadingUI.text = "Loading Objects";
             await System.Threading.Tasks.Task.Yield();
 
-            for (int i = 0; i < bspListTest.Count; i++)
-            //foreach (WorldBsp tBSP in bspListTest)
+            int id = 0;
+            foreach (WorldBsp tBSP in bspListTest)
             {
-                var tBSP = bspListTest[i];
+
                 if (tBSP.m_szWorldName.Contains("PhysicsBSP"))
                 {
                     importer.loadingUI.text = "Loading BSP";
@@ -201,7 +228,7 @@ namespace LithFAQ
 
                     if (tBSP.m_aszTextureNames[0].Contains("AI.dtx", StringComparison.OrdinalIgnoreCase) ||
                         tBSP.m_szWorldName.Contains("volume", StringComparison.OrdinalIgnoreCase) ||
-                        tBSP.m_szWorldName.Contains("Water") ||
+                        tBSP.m_szWorldName.Contains("Wwater") ||
                         tBSP.m_szWorldName.Contains("weather", StringComparison.OrdinalIgnoreCase) ||
                         tBSP.m_szWorldName.Contains("rain", StringComparison.OrdinalIgnoreCase) && !tBSP.m_szWorldName.Contains("terrain", StringComparison.OrdinalIgnoreCase) ||
                         tBSP.m_szWorldName.Contains("poison", StringComparison.OrdinalIgnoreCase) ||
@@ -213,193 +240,12 @@ namespace LithFAQ
                     }
 
                     LoadTexturesForBSP(tBSP);
+                    
 
-                    /*
-                    for (int j = 0; j < tBSP.m_pPolies.Count; j++)
-                    //foreach (WorldPoly tPoly in tBSP.m_pPolies)
+                    foreach (WorldPoly tPoly in tBSP.m_pPolies)
                     {
-                        WorldPoly tPoly = tBSP.m_pPolies[j];
 
                         //remove all bsp invisible
-                        if (tBSP.m_aszTextureNames[tPoly.GetSurface(tBSP).m_nTexture].Contains("Invisible.dtx", StringComparison.OrdinalIgnoreCase) ||
-                        tBSP.m_aszTextureNames[tPoly.GetSurface(tBSP).m_nTexture].Contains("Sky.dtx", StringComparison.OrdinalIgnoreCase) ||
-                        tBSP.m_aszTextureNames[tPoly.GetSurface(tBSP).m_nTexture].Contains("Rain.dtx", StringComparison.OrdinalIgnoreCase) ||
-                        tBSP.m_aszTextureNames[tPoly.GetSurface(tBSP).m_nTexture].Contains("hull.dtx", StringComparison.OrdinalIgnoreCase) ||
-                        tBSP.m_aszTextureNames[tPoly.GetSurface(tBSP).m_nTexture].Contains("occluder.dtx", StringComparison.OrdinalIgnoreCase))
-                        {
-                            continue;
-                        }
-
-                        float texWidth = 256f;
-                        float texHeight = 256f;
-
-                        string textureName = tBSP.m_aszTextureNames[tBSP.m_pSurfaces[tPoly.m_nSurface].m_nTexture];
-
-                        //skip sky portals
-                        if ((tPoly.GetSurface(tBSP).m_nFlags & (int)BitMask.SKY) == (int)BitMask.SKY)
-                        {
-                            continue;
-                        }
-
-                        SetLithTechInternalTextureSize(ref texWidth, ref texHeight, textureName);
-
-                        //Convert OPQ to UV magic
-                        Vector3 center = tPoly.m_vCenter;
-
-                        Vector3 o = tPoly.m_O;
-                        Vector3 p = tPoly.m_P;
-                        Vector3 q = tPoly.m_Q;
-
-                        o *= UNITYSCALEFACTOR;
-                        o -= (Vector3)tPoly.m_vCenter;
-                        p /= UNITYSCALEFACTOR;
-                        q /= UNITYSCALEFACTOR;
-
-                        Material matReference = importer.defaultMaterial;
-
-                        if (importer.dtxMaterialList.materials.TryGetValue(textureName, out var material))
-                        {
-                            matReference = material;
-                        }
-
-                        var possibleTWM = GameObject.Find(tBSP.WorldName + "_obj");
-
-                        if (possibleTWM)
-                        {
-
-                            if (textureName.Contains("invisible", StringComparison.OrdinalIgnoreCase))
-                            {
-                                continue;
-                            }
-                            var twm = possibleTWM.GetComponent<TranslucentWorldModel>();
-                            if (twm)
-                            {
-                                if (twm.bChromakey || (tPoly.GetSurface(tBSP).m_nFlags & (int)BitMask.TRANSLUCENT) == (int)BitMask.TRANSLUCENT)
-                                {
-                                    //try to find already existing material
-                                    if (importer.dtxMaterialList.materials.ContainsKey(matReference.name + "_Chromakey"))
-                                    {
-                                        matReference = importer.dtxMaterialList.materials[matReference.name + "_Chromakey"];
-                                    }
-                                    else
-                                    {
-                                        //copy material from matReference to a new
-                                        Material mat = new Material(Shader.Find("Shader Graphs/Lithtech Vertex Transparent"));
-                                        mat.name = matReference.name + "_Chromakey";
-                                        mat.mainTexture = matReference.mainTexture;
-                                        mat.SetInt("_Chromakey", 1);
-                                        matReference = mat;
-                                        AddMaterialToMaterialDictionary(mat.name, mat, importer.dtxMaterialList);
-                                    }
-                                }
-
-                                if ((tPoly.GetSurface(tBSP).m_nFlags & (int)BitMask.INVISIBLE) == (int)BitMask.INVISIBLE)
-                                {
-                                    mainObject.tag = "Blocker";
-                                }
-                                if (!twm.bVisible)
-                                {
-                                    mainObject.tag = "Blocker";
-                                }
-
-                            }
-                        }
-
-                        // CALCULATE EACH TRI INDIVIDUALLY.
-                        // CALCULATE EACH TRI INDIVIDUALLY.
-
-
-
-                        for (int nTriIndex = 0; nTriIndex < tPoly.m_nLoVerts - 2; nTriIndex++)
-                        {
-                            Vector3[] vertexList = new Vector3[tPoly.m_nLoVerts];
-                            Vector3[] _aVertexNormalList = new Vector3[tPoly.m_nLoVerts];
-                            Color[] _aVertexColorList = new Color[tPoly.m_nLoVerts];
-                            Vector2[] _aUVList = new Vector2[tPoly.m_nLoVerts];
-                            int[] _aTriangleIndices = new int[3];
-
-                            GameObject go = new GameObject(tBSP.WorldName + id);
-                            go.transform.parent = mainObject.transform;
-                            MeshRenderer mr = go.AddComponent<MeshRenderer>();
-                            MeshFilter mf = go.AddComponent<MeshFilter>();
-
-                            Mesh m = new Mesh();
-
-                            // Do the thing
-                            for (int vCount = 0; vCount < tPoly.m_nLoVerts; vCount++)
-                            {
-
-                            WorldVertex tVertex = new WorldVertex();
-                            try
-                                {
-                                    tVertex = tBSP.m_pPoints[(int)tPoly.m_aVertexColorList[vCount].nVerts];
-                                }
-                                catch (Exception e)
-                                {
-                                    Debug.Log(e.Message);
-                                }
-                            //WorldVertex tVertex = tBSP.m_pPoints[tPoly.m_aVertexColorList[vCount].nVerts];
-
-                                Vector3 data = tVertex.m_vData;
-                                data *= UNITYSCALEFACTOR;
-                                vertexList[vCount] = data;
-
-                                Color color = new Color(tPoly.m_aVertexColorList[vCount].red / 255, tPoly.m_aVertexColorList[vCount].green / 255, tPoly.m_aVertexColorList[vCount].blue / 255, 1.0f);
-                                _aVertexColorList[vCount] = color;
-
-                                _aVertexNormalList[vCount] = tBSP.m_pPlanes[tPoly.m_nPlane].m_vNormal;
-
-                                // Calculate UV coordinates based on the OPQ vectors
-                                // Note that since the worlds are offset from 0,0,0 sometimes we need to subtract the center point
-                                Vector3 curVert = vertexList[vCount];
-                                float u = Vector3.Dot((curVert - center) - o, p);
-                                float v = Vector3.Dot((curVert - center) - o, q);
-
-                                //Scale back down into something more sane
-                                u /= texWidth;
-                                v /= texHeight;
-
-                                _aUVList[vCount] = new Vector2(u, v);
-                            }
-
-                            m.SetVertices(vertexList);
-                            m.SetNormals(_aVertexNormalList);
-                            m.SetUVs(0, _aUVList);
-                            m.SetColors(_aVertexColorList);
-
-                            //Hacky, whatever
-                            _aTriangleIndices[0] = 0;
-                            _aTriangleIndices[1] = nTriIndex + 1;
-                            _aTriangleIndices[2] = (nTriIndex + 2) % tPoly.m_nLoVerts;
-
-                            // Set triangles
-                            m.SetTriangles(_aTriangleIndices, 0);
-                            m.RecalculateTangents();
-
-                            mr.material = matReference;
-                            mf.mesh = m;
-
-                            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.TwoSided;
-                        }
-
-                        id++;
-                    }*/
-
-
-
-                    Dictionary<string, List<Vector3>> verticesDict = new Dictionary<string, List<Vector3>>();
-                    Dictionary<string, List<Vector3>> normalsDict = new Dictionary<string, List<Vector3>>();
-                    Dictionary<string, List<Color>> colorsDict = new Dictionary<string, List<Color>>();
-                    Dictionary<string, List<Vector2>> uvsDict = new Dictionary<string, List<Vector2>>();
-                    Dictionary<string, List<int>> trianglesDict = new Dictionary<string, List<int>>();
-                    Dictionary<string, int> vertexOffsetDict = new Dictionary<string, int>();
-                    Dictionary<string, Material> keyValuePairs = new Dictionary<string, Material>();
-
-                    for (int j = 0; j < tBSP.m_pPolies.Count; j++)
-                    {
-                        WorldPoly tPoly = tBSP.m_pPolies[j];
-
-                        // Remove all BSP invisible
                         if (tBSP.m_aszTextureNames[tPoly.GetSurface(tBSP).m_nTexture].Contains("Invisible.dtx", StringComparison.OrdinalIgnoreCase) ||
                             tBSP.m_aszTextureNames[tPoly.GetSurface(tBSP).m_nTexture].Contains("Sky.dtx", StringComparison.OrdinalIgnoreCase) ||
                             tBSP.m_aszTextureNames[tPoly.GetSurface(tBSP).m_nTexture].Contains("Rain.dtx", StringComparison.OrdinalIgnoreCase) ||
@@ -414,7 +260,7 @@ namespace LithFAQ
 
                         string szTextureName = Path.GetFileName(tBSP.m_aszTextureNames[tBSP.m_pSurfaces[tPoly.m_nSurface].m_nTexture]);
 
-                        // Skip sky portals
+                        //skip sky portals
                         if ((tPoly.GetSurface(tBSP).m_nFlags & (int)BitMask.SKY) == (int)BitMask.SKY)
                         {
                             continue;
@@ -422,153 +268,125 @@ namespace LithFAQ
 
                         SetLithTechInternalTextureSize(ref texWidth, ref texHeight, szTextureName);
 
-                        // Initialize dictionaries if not already done
-                        if (!verticesDict.ContainsKey(szTextureName))
-                        {
-                            verticesDict[szTextureName] = new List<Vector3>();
-                            normalsDict[szTextureName] = new List<Vector3>();
-                            colorsDict[szTextureName] = new List<Color>();
-                            uvsDict[szTextureName] = new List<Vector2>();
-                            trianglesDict[szTextureName] = new List<int>();
-                            vertexOffsetDict[szTextureName] = 0;
-
-                            // Create a material for each texture
-                            Material mat = importer.defaultMaterial;
-                            mat.mainTexture = importer.dtxMaterialList.textures[szTextureName];
-                            mat.name = szTextureName;
-                            mat.enableInstancing = true;
-                            if (importer.dtxMaterialList.materials.TryGetValue(szTextureName, out var material))
-                            {
-                                keyValuePairs[szTextureName] = material;
-                            }
-
-                            // Check if the material needs to be chromakey, if so create a new material
-                            var possibleTWM = GameObject.Find(tBSP.WorldName + "_obj");
-
-                            if (possibleTWM)
-                            {
-                                if (szTextureName.Contains("invisible", StringComparison.OrdinalIgnoreCase))
-                                {
-                                    continue;
-                                }
-
-                                var twm = possibleTWM.GetComponent<TranslucentWorldModel>();
-                                if (twm)
-                                {
-                                    if (twm.bChromakey || (tPoly.GetSurface(tBSP).m_nFlags & (int)BitMask.TRANSLUCENT) == (int)BitMask.TRANSLUCENT)
-                                    {
-                                        // Try to find already existing material
-                                        if (importer.dtxMaterialList.materials.ContainsKey(mat.name + "_Chromakey"))
-                                        {
-                                            mat = importer.dtxMaterialList.materials[mat.name + "_Chromakey"];
-                                        }
-                                        else
-                                        {
-                                            // Copy material from matReference to a new one
-                                            Material mat2 = new Material(Shader.Find("Shader Graphs/Lithtech Vertex Transparent"));
-                                            mat2.name = mat.name + "_Chromakey";
-                                            mat2.mainTexture = mat.mainTexture;
-                                            mat2.SetInt("_Chromakey", 1);
-                                            mat2.enableInstancing = true;
-                                            //disable double sided 
-                                            mat = mat2;
-                                            AddMaterialToMaterialDictionary(mat.name, mat, importer.dtxMaterialList);
-                                        }
-
-                                        // Add mat to dictionary
-                                        keyValuePairs[szTextureName] = mat;
-                                    }
-                                }
-                            }
-                        }
-
-                        List<Vector3> vertices = verticesDict[szTextureName];
-                        List<Vector3> normals = normalsDict[szTextureName];
-                        List<Color> colors = colorsDict[szTextureName];
-                        List<Vector2> uvs = uvsDict[szTextureName];
-                        List<int> triangles = trianglesDict[szTextureName];
-                        int vertexOffset = vertexOffsetDict[szTextureName];
-
-                        // Convert OPQ to UV magic
+                        //Convert OPQ to UV magic
                         Vector3 center = tPoly.m_vCenter;
 
-                        Vector3 o = tPoly.m_O;
-                        Vector3 p = tPoly.m_P;
-                        Vector3 q = tPoly.m_Q;
+                        Vector3 o = tPoly.GetSurface(tBSP).m_fUV1;
+                        Vector3 p = tPoly.GetSurface(tBSP).m_fUV2;
+                        Vector3 q = tPoly.GetSurface(tBSP).m_fUV3;
 
-                        o *= UNITYSCALEFACTOR;
                         o -= (Vector3)tPoly.m_vCenter;
-                        p /= UNITYSCALEFACTOR;
-                        q /= UNITYSCALEFACTOR;
 
-                        for (int vCount = 0; vCount < tPoly.m_nLoVerts; vCount++)
+                        Material matReference = importer.defaultMaterial;
+
+                        if (importer.dtxMaterialList.materials.TryGetValue(szTextureName, out var material))
                         {
-                            WorldVertex tVertex = tBSP.m_pPoints[(int)tPoly.m_aVertexColorList[vCount].nVerts];
-
-                            Vector3 data = tVertex.m_vData;
-                            data *= UNITYSCALEFACTOR;
-                            vertices.Add(data);
-
-                            Color color = new Color(tPoly.m_aVertexColorList[vCount].red / 255f, tPoly.m_aVertexColorList[vCount].green / 255f, tPoly.m_aVertexColorList[vCount].blue / 255f, 1.0f);
-                            colors.Add(color);
-
-                            normals.Add(tBSP.m_pPlanes[tPoly.m_nPlane].m_vNormal);
-
-                            // Calculate UV coordinates based on the OPQ vectors
-                            Vector3 curVert = data;
-                            float u = Vector3.Dot((curVert - center) - o, p);
-                            float v = Vector3.Dot((curVert - center) - o, q);
-
-                            // Scale back down into something more sane
-                            u /= texWidth;
-                            v /= texHeight;
-
-                            uvs.Add(new Vector2(u, v));
+                            material.SetFloat("NormalIntensityAmount", 0); // turn off normal calculation for now.
+                            matReference = material;
                         }
 
-                        for (int nTriIndex = 0; nTriIndex < tPoly.m_nLoVerts - 2; nTriIndex++)
+                        var possibleTWM = GameObject.Find(tBSP.WorldName + "_obj");
+
+                        if (possibleTWM)
                         {
-                            triangles.Add(vertexOffset);
-                            triangles.Add(vertexOffset + nTriIndex + 1);
-                            triangles.Add(vertexOffset + nTriIndex + 2);
+
+                            if (szTextureName.Contains("invisible", StringComparison.OrdinalIgnoreCase))
+                            {
+                                continue;
+                            }
+                            var twm = possibleTWM.GetComponent<TranslucentWorldModel>();
+                            if ((tPoly.GetSurface(tBSP).m_nFlags & (int)BitMask.TRANSLUCENT) == (int)BitMask.TRANSLUCENT)
+                            {
+                                //try to find already existing material
+                                if (importer.dtxMaterialList.materials.ContainsKey(matReference.name + "_Chromakey"))
+                                {
+                                    matReference = importer.dtxMaterialList.materials[matReference.name + "_Chromakey"];
+                                    matReference.SetFloat("NormalIntensityAmount", 0); // turn off normal calculation for now.
+                                }
+                                else
+                                {
+                                    //copy material from matReference to a new
+                                    Material mat = new Material(Shader.Find("Shader Graphs/Lithtech Vertex Transparent"));
+                                    mat.name = matReference.name + "_Chromakey";
+                                    mat.mainTexture = matReference.mainTexture;
+                                    mat.SetInt("_Chromakey", 1);
+                                    mat.SetFloat("NormalIntensityAmount", 0); // turn off normal calculation for now.
+                                    matReference = mat;
+                                    AddMaterialToMaterialDictionary(mat.name, mat, importer.dtxMaterialList);
+                                }
+
+                                if ((tPoly.GetSurface(tBSP).m_nFlags & (int)BitMask.INVISIBLE) == (int)BitMask.INVISIBLE)
+                                {
+                                    mainObject.tag = "Blocker";
+                                }
+
+                            }
                         }
 
-                        vertexOffsetDict[szTextureName] = vertexOffset + tPoly.m_nLoVerts;
-                    }
+                        Vector3[] vertexList = new Vector3[tPoly.m_aRelDiskVerts.Count];
+                        Vector3[] _aVertexNormalList = new Vector3[tPoly.m_aRelDiskVerts.Count];
+                        Color[] _aVertexColorList = new Color[tPoly.m_aRelDiskVerts.Count];
+                        Vector2[] _aUVList = new Vector2[tPoly.m_aRelDiskVerts.Count];
+                        int[] _aTriangleIndices = new int[tPoly.m_aRelDiskVerts.Count];
 
-                    // Create a GameObject for each material group
-                    foreach (var kvp in verticesDict)
-                    {
-                        string materialName = kvp.Key;
-                        List<Vector3> vertices = kvp.Value;
-                        List<Vector3> normals = normalsDict[materialName];
-                        List<Color> colors = colorsDict[materialName];
-                        List<Vector2> uvs = uvsDict[materialName];
-                        List<int> triangles = trianglesDict[materialName];
-
-                        GameObject go = new GameObject(tBSP.WorldName + "_" + materialName + "_Mesh");
+                        GameObject go = new GameObject(tBSP.WorldName + id);
                         go.transform.parent = mainObject.transform;
                         MeshRenderer mr = go.AddComponent<MeshRenderer>();
                         MeshFilter mf = go.AddComponent<MeshFilter>();
 
-                        Mesh mesh = new Mesh();
-                        mesh.SetVertices(vertices);
-                        mesh.SetNormals(normals);
-                        mesh.SetUVs(0, uvs);
-                        mesh.SetColors(colors);
-                        mesh.SetTriangles(triangles, 0);
-                        mesh.RecalculateTangents();
+                        Mesh m = new Mesh();
 
-                        mr.material = keyValuePairs[materialName];
-                        mf.mesh = mesh;
+                        
+                        for (int i = 0; i < tPoly.m_aRelDiskVerts.Count; i++)
+                        {
+                            WorldVertex vert = tBSP.m_pPoints[tPoly.m_aRelDiskVerts[i].nRelVerts];
+
+                            Vector3 data = vert.m_vData;
+                            //data *= UNITYSCALEFACTOR;
+                            vertexList[i] = data * UNITYSCALEFACTOR;
+
+                            float u = Vector3.Dot((data - center) - o, p);
+                            float v = Vector3.Dot((data - center) - o, q);
+                            
+                            u /= texWidth;
+                            v /= texHeight;
+
+
+                            _aVertexNormalList[i] = tBSP.m_pPlanes[tPoly.m_nPlane].m_vNormal;
+                            _aUVList[i] = new Vector2(u, v);
+
+
+                        }
+
+                        //setup triangle indices
+                        List<int> triangleIndices = new List<int>();
+                        for (int i = 0; i < tPoly.m_aRelDiskVerts.Count - 2; i++)
+                        {
+                            triangleIndices.Add(0);
+                            triangleIndices.Add(i + 1);
+                            triangleIndices.Add(i + 2);
+                        }
+
+                        m.SetVertices(vertexList);
+                        m.SetNormals(_aVertexNormalList);
+                        m.SetUVs(0, _aUVList);
+
+                        m.SetTriangles(triangleIndices, 0);
+                        m.RecalculateTangents();
+
+                        mr.material = matReference;
+
+                        mf.mesh = m;
 
                         mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.TwoSided;
 
+
+                        id++;
                     }
                 }
             }
 
-                importer.loadingUI.text = "Combining Meshes";
+            importer.loadingUI.text = "Combining Meshes";
             await System.Threading.Tasks.Task.Yield();
 
             //combine all meshes not named PhysicsBSP
@@ -621,9 +439,9 @@ namespace LithFAQ
             importer.loadingUI.enabled = false;
 
             //Batch all the objects
-            // StaticBatchingUtility.Combine(toBatch.ToArray(), gLevelRoot);
+           // StaticBatchingUtility.Combine(toBatch.ToArray(), gLevelRoot);
             await System.Threading.Tasks.Task.Yield();
-
+            
             SetupSkyBoxMaterials();
         }
 
@@ -679,7 +497,7 @@ namespace LithFAQ
             //Load texture
             foreach (var tex in tBSP.m_aszTextureNames)
             {
-                DTX.LoadDTX(tex, importer.dtxMaterialList, importer.szProjectPath);
+                DTX.LoadDTX(importer.szProjectPath + "\\" + tex, ref importer.dtxMaterialList, importer.szProjectPath);
             }
         }
 
@@ -687,10 +505,13 @@ namespace LithFAQ
         {
             //Lookup the width and height the engine uses to calculate UV's
             //UI Mipmap Offset changes this
-            if (importer.dtxMaterialList.texSize.ContainsKey(szTextureName))
+            foreach (var mats in importer.dtxMaterialList.materials.Keys)
             {
-                texWidth = importer.dtxMaterialList.texSize[szTextureName].engineWidth;
-                texHeight = importer.dtxMaterialList.texSize[szTextureName].engineHeight;
+                if (mats.Contains(szTextureName))
+                {
+                    texWidth = importer.dtxMaterialList.texSize[szTextureName].engineWidth;
+                    texHeight = importer.dtxMaterialList.texSize[szTextureName].engineHeight;
+                }
             }
         }
 
@@ -732,9 +553,9 @@ namespace LithFAQ
                     else
                     {
 
-                        AudioClip clip = DownloadHandlerAudioClip.GetContent(www);
-                        audioSource.clip = clip;
-                        audioSource.Play();
+                            AudioClip clip = DownloadHandlerAudioClip.GetContent(www);
+                            audioSource.clip = clip;
+                            audioSource.Play();
 
                     }
                 }
@@ -804,9 +625,10 @@ namespace LithFAQ
 
                     foreach (var subItem in obj.options)
                     {
+
                         if (subItem.Key == "Sound")
                         {
-                            szFilePath = Path.Combine(importer.szProjectPath, subItem.Value.ToString());
+                            szFilePath = importer.szProjectPath + "\\" + subItem.Value;
                         }
 
                         if (subItem.Key == "Loop")
@@ -924,7 +746,7 @@ namespace LithFAQ
                     {
                         if (subItem.Key == "FOV")
                         {
-                            light.innerSpotAngle = (float)subItem.Value;
+                            light.innerSpotAngle = 0;
                             light.spotAngle = (float)subItem.Value;
                         }
 
@@ -1005,134 +827,11 @@ namespace LithFAQ
                     int nRandom = UnityEngine.Random.Range(0, nCount);
                     string szName = ModelDefinition.AVP2RandomCharacterGameStartPoint[nRandom];
 
-                    var temp = importer.CreateModelDefinition(szName, ModelType.Character, obj.options);
-
-                    var gos = abc.LoadABC(temp, tempObject.transform);
-
-                    if (gos != null)
-                    {
-                        gos.transform.position = tempObject.transform.position;
-                        gos.transform.eulerAngles = rot;
-                        gos.tag = "NoRayCast";
-                    }
-
                     //find child gameobject named Icon
                     var icon = tempObject.transform.Find("Icon");
                     icon.GetComponent<MeshRenderer>().material.mainTexture = Resources.Load<Texture2D>("Gizmos/gsp");
                     icon.gameObject.tag = "NoRayCast";
                     icon.gameObject.layer = 7;
-                }
-
-                if (obj.objectName == "PickupObject")
-                {
-                    string szName = "";
-
-                    if (obj.options.ContainsKey("Pickup"))
-                    {
-                        szName = (string)obj.options["Pickup"];
-                    }
-
-                    //abc.FromFile("Assets/Models/" + szName + ".abc", true);
-
-                    var temp = importer.CreateModelDefinition(szName, ModelType.Pickup, obj.options);
-
-                    var gos = abc.LoadABC(temp, tempObject.transform);
-
-                    if (gos != null)
-                    {
-                        gos.transform.position = tempObject.transform.position;
-                        gos.transform.eulerAngles = rot;
-                        gos.tag = "NoRayCast";
-                        gos.layer = 2;
-                    }
-
-
-                }
-
-                if (obj.objectName == "WeaponItem")
-                {
-                    string szName = "";
-
-                    if (obj.options.ContainsKey("Pickup"))
-                    {
-                        szName = (string)obj.options["Pickup"];
-                    }
-
-                    //abc.FromFile("Assets/Models/" + szName + ".abc", true);
-
-                    var temp = importer.CreateModelDefinition(szName, ModelType.Pickup, obj.options);
-
-                    var gos = abc.LoadABC(temp, tempObject.transform);
-
-                    if (gos != null)
-                    {
-                        gos.transform.position = tempObject.transform.position;
-                        gos.transform.eulerAngles = rot;
-                        gos.tag = "NoRayCast";
-                        gos.layer = 2;
-                    }
-
-
-                }
-
-                if (obj.objectName == "PropType")
-                {
-                    string szName = "";
-
-                    if (obj.options.ContainsKey("Name"))
-                    {
-                        szName = (string)obj.options["Name"];
-                    }
-
-
-                    var temp = importer.CreateModelDefinition(szName, ModelType.PropType, obj.options);
-
-                    var gos = abc.LoadABC(temp, tempObject.transform);
-
-                    if (gos != null)
-                    {
-                        gos.transform.position = tempObject.transform.position;
-                        gos.transform.eulerAngles = rot;
-                        gos.tag = "NoRayCast";
-                    }
-                }
-
-                if (obj.objectName == "Prop" ||
-                    obj.objectName == "AmmoBox" ||
-                    obj.objectName == "Beetle" ||
-                    //obj.objectName == "BodyProp" || // not implemented
-                    obj.objectName == "Civilian" ||
-                    obj.objectName == "Egg" ||
-                    obj.objectName == "HackableLock" ||
-                    obj.objectName == "Plant" ||
-                    obj.objectName == "StoryObject" ||
-                    obj.objectName == "MEMO" ||
-                    obj.objectName == "PC" ||
-                    obj.objectName == "PDA" ||
-                    obj.objectName == "Striker" ||
-                    obj.objectName == "TorchableLock" ||
-                    obj.objectName == "Turret"
-                    )
-                {
-
-                    string szName = "";
-
-                    if (obj.options.ContainsKey("Name"))
-                    {
-                        szName = (string)obj.options["Name"];
-                    }
-
-
-                    var temp = importer.CreateModelDefinition(szName, ModelType.Prop, obj.options);
-
-                    var gos = abc.LoadABC(temp, tempObject.transform);
-
-                    if (gos != null)
-                    {
-                        gos.transform.position = tempObject.transform.position;
-                        gos.transform.eulerAngles = rot;
-                        gos.tag = "NoRayCast";
-                    }
                 }
 
                 if (obj.objectName == "Trigger")
@@ -1145,7 +844,7 @@ namespace LithFAQ
                 }
 
 
-                var g = GameObject.Find("objects");
+                    var g = GameObject.Find("objects");
                 tempObject.transform.SetParent(g.transform);
                 g.transform.localScale = Vector3.one;
 
@@ -1174,6 +873,9 @@ namespace LithFAQ
                     continue;
                 }
 
+                //remove leading and trailing spaces
+                property.Trim();
+
                 var splitStrings = property.Split(' ');
 
                 if (splitStrings.Length < 4)
@@ -1182,11 +884,19 @@ namespace LithFAQ
                     continue;
                 }
 
+                //remove first element if its null
+                if (splitStrings[0] == "")
+                {
+                    splitStrings = splitStrings.Skip(1).ToArray();
+                }
+                
+
                 Vector3 vAmbientRGB = Vector3.Normalize(new Vector3(
                     float.Parse(splitStrings[1]),
                     float.Parse(splitStrings[2]),
                     float.Parse(splitStrings[3])
                 ));
+                
 
                 var color = new Color(vAmbientRGB.x, vAmbientRGB.y, vAmbientRGB.z, 1);
                 SetAmbientLight(color);
@@ -1212,6 +922,10 @@ namespace LithFAQ
             importer.defaultColor = color;
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Skybox;
             RenderSettings.ambientIntensity = 1.0f;
+        }
+        public void Quit()
+        {
+            Application.Quit();
         }
 
         public static WorldObjects ReadObjects(ref BinaryReader b)

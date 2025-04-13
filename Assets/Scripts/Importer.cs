@@ -181,9 +181,16 @@ public class Importer : MonoBehaviour
             modelDefinition.modelType = type;
             if (!configButes.ContainsKey(type))
             {
-                if (File.Exists(szProjectPath + "\\Attributes\\CharacterButes.txt"))
+                String szCharButes = "\\Attributes\\CharacterButes.txt";
+                //get game config selection
+                if (nSelectedGame == (int)Game.DIEHARD)
                 {
-                    ini.Open(szProjectPath + "\\Attributes\\CharacterButes.txt");
+                    szCharButes = "\\Attributes\\Character.txt";
+                }
+
+                if (File.Exists(szProjectPath + szCharButes))
+                {
+                    ini.Open(szProjectPath + szCharButes);
                     configButes.Add(type, ini); //stuff this away
                 }
                 else
@@ -421,7 +428,17 @@ public class Importer : MonoBehaviour
 
             //find the key "Filename" in the dictionary
             string szFilename = (string)objectInfo["Filename"];
+
+            
+            if(!objectInfo.ContainsKey("Skin"))
+            {
+                Debug.LogError("No skin found for prop");
+                return null;
+            }
+
+
             string szSkins = (string)objectInfo["Skin"];
+ 
 
             string[] szSkinArray = szSkins.Split(';');
 
@@ -447,9 +464,16 @@ public class Importer : MonoBehaviour
 
             if (!configButes.ContainsKey(type))
             {
-                if (File.Exists(szProjectPath + "\\Attributes\\PropTypes.txt"))
+                String szPropToLoad = "\\Attributes\\PropTypes.txt";
+
+                if(nSelectedGame == (int)Game.DIEHARD)
                 {
-                    ini.Open(szProjectPath + "\\Attributes\\PropTypes.txt");
+                    szPropToLoad = "\\Attributes\\Prop.txt";
+                }
+
+                if (File.Exists(szProjectPath + szPropToLoad))
+                {
+                    ini.Open(szProjectPath + szPropToLoad);
                     configButes.Add(type, ini); //stuff this away
                 }
                 else

@@ -142,6 +142,8 @@ public class ABCModelReader : MonoBehaviour
         //}
 
         Model model = new Model();
+
+        String szExtension = Path.GetExtension(mDef.szModelFilePath);
         model.Name = Path.GetFileNameWithoutExtension(mDef.szModelFilePath);
 
         if (mDef.szModelFilePath == null)
@@ -161,6 +163,19 @@ public class ABCModelReader : MonoBehaviour
             while (nextSectionOffset != -1)
             {
                 reader.BaseStream.Seek(nextSectionOffset, SeekOrigin.Begin);
+                
+                if (szExtension.Contains("ltb"))
+                {
+                    //check if we have a pre Jupiter LTB
+                    string szLtbHeader = ReadString(reader);
+
+                    if (szLtbHeader == "LTBHeader")
+                    {
+                        nextSectionOffset = reader.ReadInt32();
+                        reader.BaseStream.Position = nextSectionOffset;
+                    }
+                }
+                
                 string sectionName = ReadString(reader);
                 nextSectionOffset = reader.ReadInt32();
                 if (sectionName == "Header")
@@ -168,7 +183,9 @@ public class ABCModelReader : MonoBehaviour
                     nVersion = reader.ReadInt32();
                     if (nVersion < 9 || nVersion > 13)
                     {
-                        throw new Exception($"Unsupported file version ({nVersion}).");
+                        Debug.LogError($"Unsupported file version ({nVersion}).");
+                        return null;
+                        //throw new Exception($"Unsupported file version ({nVersion}).");
                     }
                     model.Version = nVersion;
                     reader.BaseStream.Seek(8, SeekOrigin.Current);
