@@ -80,73 +80,7 @@ public class WorldBsp
             m_nTextures = b.ReadInt32();
             ReadTextures(ref b);
             ReadVertices(ref b);
-            
-            ReadLeafs(b);
-            // So this is odd, if I use the ReadLeafs function the binary reader position automatically increases by itself.
-            // So we inline it here, literally copy pasted.
-            /*
-            if (m_nLeafs > 0)
-            {
-                for (int i = 0; i < m_nLeafs; i++)
-                {
-                    Leafs pLeaf = new Leafs();
-
-
-                    pLeaf.m_nNumLeafLists = b.ReadUInt16();
-
-                    if (pLeaf.m_nNumLeafLists == 0xFFFF)
-                    {
-                        pLeaf.m_nLeafListIndex = b.ReadInt16();
-                    }
-
-                    else if (pLeaf.m_nNumLeafLists > 0)
-                    {
-                        for (int t = 0; t < pLeaf.m_nNumLeafLists; t++)
-                        {
-                            LeafList pLeafList = new LeafList();
-
-                            pLeafList.m_nPortalId = b.ReadInt16();
-                            pLeafList.m_nSize = b.ReadInt16();
-                            Array.Resize(ref pLeafList.m_pContents, pLeafList.m_nSize);
-                            pLeafList.m_pContents = b.ReadBytes(pLeafList.m_nSize);
-
-                            pLeaf.m_pLeafLists.Add(pLeafList);
-                        }
-                    }
-
-                    if (datVersion == 56)
-                    {
-                        pLeaf.m_nPoliesCount = b.ReadUInt16();
-                    }
-                    else
-                    {
-                        pLeaf.m_nPoliesCount = b.ReadInt32();
-                    }
-
-                    if (pLeaf.m_nPoliesCount > 0)
-                    {
-                        Array.Resize(ref pLeaf.m_pPolies, pLeaf.m_nPoliesCount * 4);
-
-                        for (int y = 0; y < pLeaf.m_pPolies.Length; y++)
-                        {
-                            if (datVersion == 56)
-                            {
-                                pLeaf.m_pPolies[y] = b.ReadByte();
-                            }
-                            else
-                            {
-                                pLeaf.m_pPolies[y] = b.ReadInt16();
-                            }
-                        }
-                    }
-
-                    pLeaf.m_nCardinal1 = b.ReadInt32();
-
-                    m_pLeafs.Add(pLeaf);
-                }
-            }
-            */
-
+            ReadLeafs(b, eGame);
             ReadPlanes(ref b);
             ReadSurfaces56(ref b);
 
@@ -365,7 +299,7 @@ public class WorldBsp
         }
     }
 
-    public void ReadLeafs(ref BinaryReader b, Game eGame)
+    public void ReadLeafs(BinaryReader b, Game eGame)
     {
         if (m_nLeafs > 0)
         {
@@ -373,8 +307,9 @@ public class WorldBsp
             {
                 Leafs pLeaf = new Leafs();
 
+                pLeaf.m_nNumLeafLists = b.ReadInt16();
 
-                if(pLeaf.m_nNumLeafLists == -1)
+                if (pLeaf.m_nNumLeafLists == -1)
                 {
                     pLeaf.m_nLeafListIndex = b.ReadInt16();
                 }
@@ -402,34 +337,43 @@ public class WorldBsp
                 {
                     pLeaf.m_nPoliesCount = b.ReadInt32();
                 }
-                      
 
-                if (pLeaf.m_nPoliesCount > 0)
+                if (eGame == Game.LOMM)
                 {
-                    if (eGame == Game.LOMM)
+                    Int16 unknown = b.ReadInt16();
+                    if (pLeaf.m_nPoliesCount > 0)
                     {
-                        Int16 unknown = b.ReadInt16();
                         Array.Resize(ref pLeaf.m_pPolies, pLeaf.m_nPoliesCount * 2);
-                    }
-                    else
-                    {
-                        Array.Resize(ref pLeaf.m_pPolies, pLeaf.m_nPoliesCount * 4);
-                    }
 
-                    for (int y = 0; y < pLeaf.m_pPolies.Length; y++)
-                    {
-                        if (datVersion == 56)
-                        {
-                            pLeaf.m_pPolies[y] = b.ReadByte();
-                        }
-                        else
+                        for (int y = 0; y < pLeaf.m_pPolies.Length; y++)
                         {
                             pLeaf.m_pPolies[y] = b.ReadInt16();
                         }
                     }
+
+                    pLeaf.m_nCardinal1 = b.ReadInt16();
                 }
-              
-                pLeaf.m_nCardinal1 = b.ReadInt32();
+                else
+                {
+                    if (pLeaf.m_nPoliesCount > 0)
+                    {
+                        Array.Resize(ref pLeaf.m_pPolies, pLeaf.m_nPoliesCount * 4);
+
+                        for (int y = 0; y < pLeaf.m_pPolies.Length; y++)
+                        {
+                            if (datVersion == 56)
+                            {
+                                pLeaf.m_pPolies[y] = b.ReadByte();
+                            }
+                            else
+                            {
+                                pLeaf.m_pPolies[y] = b.ReadInt16();
+                            }
+                        }
+                    }
+
+                    pLeaf.m_nCardinal1 = b.ReadInt32();
+                }
               
                 m_pLeafs.Add(pLeaf);
             }

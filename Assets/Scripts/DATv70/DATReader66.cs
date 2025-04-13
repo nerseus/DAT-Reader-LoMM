@@ -544,18 +544,15 @@ namespace LithFAQ
             //UI Mipmap Offset changes this
             if (importer.dtxMaterialList.texSize.ContainsKey(szTextureName))
             {
-                if (mats.Contains(szTextureName))
+                if(!importer.dtxMaterialList.texSize.ContainsKey(szTextureName))
                 {
-                    if(!importer.dtxMaterialList.texSize.ContainsKey(szTextureName))
-                    {
-                        texWidth = 256f;
-                        texHeight = 256f;
-                    }
-                    else
-                    {
-                        texWidth = importer.dtxMaterialList.texSize[szTextureName].engineWidth;
-                        texHeight = importer.dtxMaterialList.texSize[szTextureName].engineHeight;
-                    }
+                    texWidth = 256f;
+                    texHeight = 256f;
+                }
+                else
+                {
+                    texWidth = importer.dtxMaterialList.texSize[szTextureName].engineWidth;
+                    texHeight = importer.dtxMaterialList.texSize[szTextureName].engineHeight;
                 }
             }
         }
@@ -908,8 +905,7 @@ namespace LithFAQ
 
 
                 }
-
-                if (obj.objectName == "PropType" || obj.objectName == "CProp")
+                else if (obj.objectName == "PropType" || obj.objectName == "CProp")
                 {
                     string szName = "";
 
@@ -1014,7 +1010,6 @@ namespace LithFAQ
                     icon.gameObject.tag = "NoRayCast";
                     icon.gameObject.layer = 7;
                 }
-
                 // Generic Monster type - has a Filename but no skin
                 else if (obj.options.ContainsKey("Filename"))
                 {
