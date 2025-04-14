@@ -8,7 +8,7 @@ using static LithFAQ.LTUtils;
 
 public class WorldBsp
 {
-    public static readonly string BrightGreenTexture = "textures\\leveltextxures\\misc\\greenscreen.dtx";
+    public static readonly string BrightGreenTexture = "textures\\leveltextures\\misc\\greenscreen.dtx";
 
     public Int16 m_nWorldInfoFlags;
     public String m_szWorldName;
@@ -28,7 +28,7 @@ public class WorldBsp
     public LTVector m_vWorldTranslation;
     public int m_nNamesLen;
     public int m_nTextures;
-    public List<String> m_aszTextureNames = new List<String>();
+    public List<String> m_aszTextureNames { get; set; } = new List<String>();
     public List<WorldPoly> m_pPolies = new List<WorldPoly>();
     public List<WorldPlane> m_pPlanes = new List<WorldPlane>();
     public List<WorldSurface> m_pSurfaces = new List<WorldSurface>();
@@ -47,7 +47,8 @@ public class WorldBsp
         get { return m_szWorldName; }
     }
 
-    public int datVersion;
+    public int datVersion { get; set; }
+
     public int Load(ref BinaryReader b, bool doIt, Game eGame)
     {
         int dwUnknown, dwUnknown2, dwUnknown3 = 0;

@@ -103,7 +103,7 @@ namespace LithFAQ
             }
 
             importer.dtxMaterialList = null;
-            importer.dtxMaterialList = new DTX.DTXMaterial();
+            importer.dtxMaterialList = new DTXMaterial();
 
             Resources.UnloadUnusedAssets();
 
@@ -510,8 +510,8 @@ namespace LithFAQ
             {
                 if (mats.Contains(szTextureName))
                 {
-                    texWidth = importer.dtxMaterialList.texSize[szTextureName].engineWidth;
-                    texHeight = importer.dtxMaterialList.texSize[szTextureName].engineHeight;
+                    texWidth = importer.dtxMaterialList.texSize[szTextureName].EngineWidth;
+                    texHeight = importer.dtxMaterialList.texSize[szTextureName].EngineHeight;
                 }
             }
         }

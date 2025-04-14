@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using static LithFAQ.LTTypes;
 using static LithFAQ.LTUtils;
 
 public class WorldReader
@@ -8,28 +7,6 @@ public class WorldReader
     public TWorldHeader WorldHeader = new TWorldHeader();
     public String WorldProperties;
     TWorldExtents WorldExtents = new TWorldExtents();
-
-    public struct TWorldHeader
-    {
-        public int nVersion;
-        public int dwObjectDataPos;
-        public int dwRenderDataPos;
-        public int dwDummy1;
-        public int dwDummy2;
-        public int dwDummy3;
-        public int dwDummy4;
-        public int dwDummy5;
-        public int dwDummy6;
-        public int dwDummy7;
-        public int dwDummy8;
-    }
-    public struct TWorldExtents
-    {
-        public float fLMGridSize;
-        public LTVector vExtentsMin;
-        public LTVector vExtentsMax;
-        public LTVector vOffset;
-    }
 
     public void ReadHeader(ref BinaryReader b)
     {
@@ -69,5 +46,4 @@ public class WorldReader
         WorldExtents.vExtentsMin = ReadLTVector(ref b);
         WorldExtents.vExtentsMax = ReadLTVector(ref b);
     }
-
 }

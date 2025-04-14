@@ -2,10 +2,8 @@ using System.IO;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class DTXImageLoader : MonoBehaviour
+public class DTXImageLoader : BaseConverter
 {
-    private static readonly string SourceRootFolder = "c:\\LOMM\\Data\\";
-
     public string ImagePath;
     public bool UseOriginal;
 
@@ -13,9 +11,11 @@ public class DTXImageLoader : MonoBehaviour
     {
         var image = GetComponent<Image>();
 
-        var dtx = DTX.LoadDTX(SourceRootFolder, ImagePath);
+        string fullfilenameAndPath = Path.Combine(SourceRootFolder, ImagePath);
+        var dtxModel = DTXReader.LoadDTXModel(fullfilenameAndPath, ImagePath);
+        var unityDTX = DTXConverter.ConvertDTX(dtxModel);
 
-        Sprite newSprite = Sprite.Create(UseOriginal ? dtx.OriginalTexture2D : dtx.Texture2D, new Rect(0, 0, dtx.Texture2D.width, dtx.Texture2D.width), new Vector2(0.5f, 0.5f));
+        Sprite newSprite = Sprite.Create(unityDTX.Texture2D, new Rect(0, 0, unityDTX.Texture2D.width, unityDTX.Texture2D.width), new Vector2(0.5f, 0.5f));
 
         image.sprite = newSprite;
     }

@@ -23,4 +23,6 @@ public static class UIActionManager
     public static Action OnExportSelectedObject;
     public static Action OnExportAll;
     public static Action OnExportTextures;
+    public static Action OnExportABCs;
+    public static Action OnExportDATs;
 }

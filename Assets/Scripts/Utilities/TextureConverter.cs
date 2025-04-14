@@ -1,11 +1,8 @@
 using UnityEngine;
 using System.IO;
 
-public class TextureConverter : MonoBehaviour
+public class TextureConverter : BaseConverter
 {
-    private static readonly string SourceRootFolder = "c:\\LOMM\\Data\\";
-    private static readonly string DestinationRootFolder = "C:\\temp\\LOMM\\Converted\\";
-
     public void OnEnable()
     {
         UIActionManager.OnExportTextures += ExportTextures;
@@ -22,18 +19,21 @@ public class TextureConverter : MonoBehaviour
         foreach(var file in files)
         {
             var relativePath = Path.GetRelativePath(SourceRootFolder, file);
-            var unityDtx = DTX.LoadDTX(SourceRootFolder, relativePath);
+            var dtxModel = DTXReader.LoadDTXModel(file, relativePath);
+            var unityDtx = DTXConverter.ConvertDTX(dtxModel);
             if (unityDtx == null)
             {
                 Debug.LogError($"Got back null for file {file}");
                 continue;
             }
 
-            var newFilePathAndName = Path.ChangeExtension(Path.Combine(DestinationRootFolder, relativePath), ".png");
+            var newFilePathAndName = Path.ChangeExtension(Path.Combine(DestinationRootFolder, "Textures", relativePath), ".png");
             Directory.CreateDirectory(Path.GetDirectoryName(newFilePathAndName));
 
             byte[] pngBytes = unityDtx.Texture2D.EncodeToPNG();
             File.WriteAllBytes(newFilePathAndName, pngBytes);
         }
+
+        Debug.Log($"Finished! Created {files.Length} files.");
     }
 }

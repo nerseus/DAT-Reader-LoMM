@@ -98,7 +98,7 @@ namespace LithFAQ
                 DestroyImmediate(mat);
             }
 
-            importer.dtxMaterialList = new DTX.DTXMaterial();
+            importer.dtxMaterialList = new DTXMaterial();
 
             Resources.UnloadUnusedAssets();
 
@@ -689,8 +689,8 @@ namespace LithFAQ
             //UI Mipmap Offset changes this
             if (importer.dtxMaterialList.texSize.ContainsKey(szTextureName))
             {
-                texWidth = importer.dtxMaterialList.texSize[szTextureName].engineWidth;
-                texHeight = importer.dtxMaterialList.texSize[szTextureName].engineHeight;
+                texWidth = importer.dtxMaterialList.texSize[szTextureName].EngineWidth;
+                texHeight = importer.dtxMaterialList.texSize[szTextureName].EngineHeight;
             }
         }
 

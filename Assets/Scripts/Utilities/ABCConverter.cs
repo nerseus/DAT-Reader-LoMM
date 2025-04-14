@@ -1,28 +1,26 @@
 using UnityEngine;
 using System.IO;
 
-public class ABCConverter : MonoBehaviour
+public class ABCConverter : BaseConverter
 {
-    private static readonly string SourceRootFolder = "c:\\LOMM\\Data\\";
-    private static readonly string DestinationRootFolder = "C:\\temp\\LOMM\\Converted\\";
-
     public void OnEnable()
     {
-        UIActionManager.OnExportTextures += ExportTextures;
+        UIActionManager.OnExportABCs += ExportABCs;
     }
 
     public void OnDisable()
     {
-        UIActionManager.OnExportTextures -= ExportTextures;
+        UIActionManager.OnExportABCs -= ExportABCs;
     }
 
-    private void ExportTextures()
+    private void ExportABCs()
     {
-        var files = Directory.GetFiles(SourceRootFolder, "*.dtx", SearchOption.AllDirectories);
+        var files = Directory.GetFiles(SourceRootFolder, "*.abc", SearchOption.AllDirectories);
         foreach(var file in files)
         {
             var relativePath = Path.GetRelativePath(SourceRootFolder, file);
-            var unityDtx = DTX.LoadDTX(SourceRootFolder, relativePath);
+            var dtxModel = DTXReader.LoadDTXModel(SourceRootFolder, relativePath);
+            var unityDtx = DTXConverter.ConvertDTX(dtxModel);
             if (unityDtx == null)
             {
                 Debug.LogError($"Got back null for file {file}");

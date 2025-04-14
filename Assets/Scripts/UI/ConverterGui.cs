@@ -9,6 +9,8 @@ public class ConverterGui : MonoBehaviour
 
     // Some bools for controlling different windows
     private bool bExportTextures = false;
+    private bool bExportABCs = false;
+    private bool bExportDATs = false;
     private bool bQuitClicked = false;
 
     public void Start()
@@ -21,7 +23,9 @@ public class ConverterGui : MonoBehaviour
 
     public void Reset()
     {
-        bExportTextures = true;
+        bExportTextures = false;
+        bExportABCs = false;
+        bExportDATs = false;
     }
 
     // Subscribe to Layout events
@@ -47,6 +51,16 @@ public class ConverterGui : MonoBehaviour
             bExportTextures = false;
             UIActionManager.OnExportTextures?.Invoke();
         }
+        if (bExportABCs)
+        {
+            bExportABCs = false;
+            UIActionManager.OnExportABCs?.Invoke();
+        }
+        if (bExportDATs)
+        {
+            bExportDATs = false;
+            UIActionManager.OnExportDATs?.Invoke();
+        }
         if (bQuitClicked)
         {
             Application.Quit();
@@ -62,6 +76,8 @@ public class ConverterGui : MonoBehaviour
         ImGui.BeginMainMenuBar();
         if (ImGui.BeginMenu("File"))
         {
+            ImGui.MenuItem("Export DATs", null, ref bExportDATs);
+            ImGui.MenuItem("Export ABCs", null, ref bExportABCs);
             ImGui.MenuItem("Export Textures", null, ref bExportTextures);
             ImGui.MenuItem("Quit", null, ref bQuitClicked);
             ImGui.EndMenu();
