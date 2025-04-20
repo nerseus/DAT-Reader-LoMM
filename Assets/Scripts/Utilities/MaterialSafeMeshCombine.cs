@@ -33,7 +33,8 @@ namespace Utility
 
                 for (int s = 0; s < meshFilter.sharedMesh.subMeshCount; s++)
                 {
-                    int materialArrayIndex = materials.FindIndex(m => m.name == meshRenderer.sharedMaterials[s].name);
+                    string sharedMaterialName = meshRenderer.sharedMaterials[s].name;
+                    int materialArrayIndex = materials.FindIndex(m => m.name == sharedMaterialName);
                     if (materialArrayIndex == -1)
                     {
                         materials.Add(meshRenderer.sharedMaterials[s]);
@@ -120,7 +121,7 @@ namespace Utility
                     }
                     toSave.Clear();
 
-                    Destroy(meshFilters[i].gameObject);
+                    DestroyImmediate(meshFilters[i].gameObject);
                 }
             }
             else
@@ -131,8 +132,8 @@ namespace Utility
                     {
                         continue;
                     }
-                    Destroy(meshFilters[i].GetComponent<MeshRenderer>());
-                    Destroy(meshFilters[i]);
+                    DestroyImmediate(meshFilters[i].GetComponent<MeshRenderer>());
+                    DestroyImmediate(meshFilters[i]);
                 } 
             }
             gameObject.transform.position = originalPosition;

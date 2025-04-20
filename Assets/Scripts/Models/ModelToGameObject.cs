@@ -108,17 +108,24 @@ public class ModelToGameObject : MonoBehaviour
             return null;
         }
 
-        ABCModel model = ABCModelReader.LoadABCModel(mDef.szModelFilePath);
-
         if (importer == null)
         {
             importer = GameObject.FindObjectOfType<Importer>();
         }
 
+        ABCModel model = ABCModelReader.LoadABCModel(mDef.szModelFilePath, importer.szProjectPath);
+        if (model == null)
+        {
+            return null;
+        }
+
         //load dtx textures
         foreach (var tex in mDef.szModelTextureName)
         {
-            DTX.LoadDTX(tex, importer.dtxMaterialList, importer.szProjectPath);
+            if (DTX.LoadDTXIntoLibrary(tex, importer.dtxMaterialList, importer.szProjectPath) == DTXReturn.FAILED)
+            {
+                Debug.LogError("Could not load texture: " + tex);
+            }
         }
 
         mDef.model = model;
@@ -156,7 +163,7 @@ public class ModelToGameObject : MonoBehaviour
         //combine
         mDef.rootObject.MeshCombine(true);
 
-        mDef.rootObject.tag = "NoRayCast";
+        mDef.rootObject.tag = LithtechTags.NoRayCast;
 
         //if (mDef.bMoveToFloor ||
         //    mDef.modelType == ModelType.Pickup ||

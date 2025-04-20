@@ -1,6 +1,5 @@
 ﻿using System;
 using System.IO;
-using System.Windows.Forms;
 using UnityEngine;
 
 public static class DTX
@@ -9,20 +8,20 @@ public static class DTX
     {
         //Check if WorldTextures\invisible.dtx exists, if not then check Tex\invisible.dtx
         //This should cover most lithtech games
-        string newPath = Path.Combine(projectPath, "\\WorldTextures\\invisible.dtx");
+        string newPath = Path.Combine(projectPath, "WorldTextures\\invisible.dtx");
         if (File.Exists(newPath))
         {
             return newPath;
         }
 
-        newPath = Path.Combine(projectPath, "\\Tex\\invisible.dtx");
+        newPath = Path.Combine(projectPath, "Tex\\invisible.dtx");
         if (File.Exists(newPath))
         {
             return newPath;
         }
 
         // Support for LoMM
-        newPath = Path.Combine(projectPath, "\\Textures\\LevelTextures\\Misc\\invisible.dtx");
+        newPath = Path.Combine(projectPath, "Textures\\LevelTextures\\Misc\\invisible.dtx");
         if (File.Exists(newPath))
         {
             return newPath;
@@ -54,14 +53,13 @@ public static class DTX
         // If above is not found, use default texture (if it exists).
         if (!File.Exists(filenameAndFullPathToDTX))
         {
-            Debug.Log($"Could not find texture. Using default/invisible. Relative Path = {relativePath}");
             filenameAndFullPathToDTX = GetDefaultTexturePath(projectPath);
         }
 
         return filenameAndFullPathToDTX;
     }
 
-    public static DTXReturn LoadDTX(string relativePath, DTXMaterial dtxMaterial, string projectPath)
+    public static DTXReturn LoadDTXIntoLibrary(string relativePath, DTXMaterialLibrary dtxMaterial, string projectPath)
     {
         if (dtxMaterial.textures.ContainsKey(relativePath))
         {
@@ -72,18 +70,21 @@ public static class DTX
         string filenameAndFullPathToDTX = GetFullTexturePathToDTX(relativePath, projectPath);
         if (filenameAndFullPathToDTX == null)
         {
+            Debug.LogError("Exiting LoadDTXIntoLibrary with Failed - filenameAndFullPathToDTX is null");
             return DTXReturn.FAILED;
         }
 
         var dtxModel = DTXReader.LoadDTXModel(filenameAndFullPathToDTX, relativePath);
         if (dtxModel == null)
         {
+            Debug.LogError("Exiting LoadDTXIntoLibrary with Failed - dtxModel is null");
             return DTXReturn.FAILED;
         }
 
         var unityDTX = DTXConverter.ConvertDTX(dtxModel);
         if (unityDTX == null)
         {
+            Debug.LogError("Exiting LoadDTXIntoLibrary with Failed - unityDTX is null");
             return DTXReturn.FAILED;
         }
 
@@ -96,7 +97,7 @@ public static class DTX
         return DTXReturn.SUCCESS;
     }
 
-    private static void AddTextureToMaterialDictionary(string filename, Texture2D texture2D, DTXMaterial dtxMaterial)
+    private static void AddTextureToMaterialDictionary(string filename, Texture2D texture2D, DTXMaterialLibrary dtxMaterial)
     {
         if (!dtxMaterial.textures.ContainsKey(filename))
         {
@@ -104,7 +105,7 @@ public static class DTX
         }
     }
 
-    public static void AddMaterialToMaterialDictionary(string filename, Material mat, DTXMaterial dtxMaterial)
+    public static void AddMaterialToMaterialDictionary(string filename, Material mat, DTXMaterialLibrary dtxMaterial)
     {
         if (!dtxMaterial.materials.ContainsKey(filename))
         {
@@ -139,7 +140,7 @@ public static class DTX
         }
     }
 
-    private static void AddTexSizeToDictionary(string filename, TextureSize texInfo, DTXMaterial dtxMaterial)
+    private static void AddTexSizeToDictionary(string filename, TextureSize texInfo, DTXMaterialLibrary dtxMaterial)
     {
         if (!dtxMaterial.texSize.ContainsKey(filename))
         {

@@ -103,7 +103,7 @@ namespace LithFAQ
             }
 
             importer.dtxMaterialList = null;
-            importer.dtxMaterialList = new DTXMaterial();
+            importer.dtxMaterialList = new DTXMaterialLibrary();
 
             Resources.UnloadUnusedAssets();
 
@@ -237,7 +237,7 @@ namespace LithFAQ
                         tBSP.m_szWorldName.Contains("ladder", StringComparison.OrdinalIgnoreCase)
                         )
                     {
-                        mainObject.tag = "Volumes";
+                        mainObject.tag = LithtechTags.Volumes;
                     }
 
                     LoadTexturesForBSP(tBSP);
@@ -318,7 +318,7 @@ namespace LithFAQ
 
                                 if ((tPoly.GetSurface(tBSP).m_nFlags & (int)BitMask.INVISIBLE) == (int)BitMask.INVISIBLE)
                                 {
-                                    mainObject.tag = "Blocker";
+                                    mainObject.tag = LithtechTags.Blocker;
                                 }
 
                             }
@@ -498,7 +498,7 @@ namespace LithFAQ
             //Load texture
             foreach (var tex in tBSP.m_aszTextureNames)
             {
-                DTX.LoadDTX(importer.szProjectPath + "\\" + tex, importer.dtxMaterialList, importer.szProjectPath);
+                DTX.LoadDTXIntoLibrary(importer.szProjectPath + "\\" + tex, importer.dtxMaterialList, importer.szProjectPath);
             }
         }
 
@@ -607,7 +607,7 @@ namespace LithFAQ
                     //find child gameobject named Icon
                     var icon = tempObject.transform.Find("Icon");
                     icon.GetComponent<MeshRenderer>().material.mainTexture = Resources.Load<Texture2D>("Gizmos/worldproperties");
-                    icon.gameObject.tag = "NoRayCast";
+                    icon.gameObject.tag = LithtechTags.NoRayCast;
                     icon.gameObject.layer = 7;
                 }
 
@@ -616,7 +616,7 @@ namespace LithFAQ
                     //find child gameobject named Icon
                     var icon = tempObject.transform.Find("Icon");
                     icon.GetComponent<MeshRenderer>().material.mainTexture = Resources.Load<Texture2D>("Gizmos/sound");
-                    icon.gameObject.tag = "NoRayCast";
+                    icon.gameObject.tag = LithtechTags.NoRayCast;
                     icon.gameObject.layer = 7;
 
                     AudioSource temp = tempObject.AddComponent<AudioSource>();
@@ -696,7 +696,7 @@ namespace LithFAQ
                     //find child gameobject named Icon
                     var icon = tempObject.transform.Find("Icon");
                     icon.GetComponent<MeshRenderer>().material.mainTexture = Resources.Load<Texture2D>("Gizmos/light");
-                    icon.gameObject.tag = "NoRayCast";
+                    icon.gameObject.tag = LithtechTags.NoRayCast;
                     icon.gameObject.layer = 7;
 
                     var light = tempObject.gameObject.AddComponent<Light>();
@@ -738,7 +738,7 @@ namespace LithFAQ
                     //find child gameobject named Icon
                     var icon = tempObject.transform.Find("Icon");
                     icon.GetComponent<MeshRenderer>().material.mainTexture = Resources.Load<Texture2D>("Gizmos/light");
-                    icon.gameObject.tag = "NoRayCast";
+                    icon.gameObject.tag = LithtechTags.NoRayCast;
                     icon.gameObject.layer = 7;
                     var light = tempObject.gameObject.AddComponent<Light>();
 
@@ -787,7 +787,7 @@ namespace LithFAQ
                     //find child gameobject named Icon
                     var icon = tempObject.transform.Find("Icon");
                     icon.GetComponent<MeshRenderer>().material.mainTexture = Resources.Load<Texture2D>("Gizmos/light");
-                    icon.gameObject.tag = "NoRayCast";
+                    icon.gameObject.tag = LithtechTags.NoRayCast;
                     icon.gameObject.layer = 7;
                     var light = tempObject.gameObject.AddComponent<Light>();
 
@@ -831,7 +831,7 @@ namespace LithFAQ
                     //find child gameobject named Icon
                     var icon = tempObject.transform.Find("Icon");
                     icon.GetComponent<MeshRenderer>().material.mainTexture = Resources.Load<Texture2D>("Gizmos/gsp");
-                    icon.gameObject.tag = "NoRayCast";
+                    icon.gameObject.tag = LithtechTags.NoRayCast;
                     icon.gameObject.layer = 7;
                 }
 
@@ -840,7 +840,7 @@ namespace LithFAQ
                     //find child gameobject named Icon
                     var icon = tempObject.transform.Find("Icon");
                     icon.GetComponent<MeshRenderer>().material.mainTexture = Resources.Load<Texture2D>("Gizmos/trigger");
-                    icon.gameObject.tag = "NoRayCast";
+                    icon.gameObject.tag = LithtechTags.NoRayCast;
                     icon.gameObject.layer = 7;
                 }
 

@@ -8,7 +8,9 @@ using UnityEngine;
 
 public static class UIActionManager
 {
+    public static Action OnConvertEverything;
     public static Action OnPreLoadLevel;
+    public static Action OnPreLoadABC;
     public static Action OnPostLoadLevel;
     public static Action OnOpenDefaultLevel;
     public static Action OnReset;

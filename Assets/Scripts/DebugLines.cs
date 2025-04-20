@@ -96,7 +96,7 @@ public class DebugLines : MonoBehaviour
 
     private bool TryMove(RaycastHit hit, string direction, float yOffset)
     {
-        if (hit.collider.CompareTag("NoRayCast"))
+        if (hit.collider.CompareTag(LithtechTags.NoRayCast))
         {
             DebugLog(yOffset, direction, $"Found hit on ({hit.collider.gameObject.name}) but has NoRayCast!");
 

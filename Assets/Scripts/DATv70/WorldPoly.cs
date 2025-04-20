@@ -211,5 +211,4 @@ public class WorldPoly
     {
         return pWorldBsp.m_pSurfaces[m_nSurface];
     }
-
 }

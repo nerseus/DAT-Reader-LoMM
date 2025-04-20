@@ -100,8 +100,8 @@ public static class ABCModelReader
 
         return piece;
     }
-   
-    public static ABCModel LoadABCModel(string filename)
+
+    public static ABCModel LoadABCModel(string filename, string projectPath)
     {
         if (string.IsNullOrWhiteSpace(filename))
         {
@@ -110,7 +110,7 @@ public static class ABCModelReader
 
         if (!File.Exists(filename))
         {
-            Debug.LogError($"ABCModelReader Error - File not found: {filename}");
+            Debug.LogWarning($"ABCModelReader Error - File not found: {filename}");
             return null;
         }
 
@@ -119,8 +119,9 @@ public static class ABCModelReader
         string fileExtension = Path.GetExtension(filename);
         model.Name = Path.GetFileNameWithoutExtension(filename);
 
-        using (BinaryReader reader = new BinaryReader(File.OpenRead(filename)))
+        try
         {
+            using BinaryReader reader = new BinaryReader(File.OpenRead(filename));
             int nextSectionOffset = 0;
             while (nextSectionOffset != -1)
             {
@@ -186,7 +187,13 @@ public static class ABCModelReader
 
             reader.Close();
         }
+        catch (Exception ex)
+        {
+            Debug.LogError($"Error while loading ABC file {filename}: {ex.Message}");
+            return null;
+        }
 
+        model.RelativePathToABCFileLowercase = Path.GetRelativePath(projectPath, filename).ConvertFolderSeperators().ToLower();
         return model;
     }
 }

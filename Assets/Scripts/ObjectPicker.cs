@@ -142,7 +142,7 @@ public class ObjectPicker : MonoBehaviour
         var levelGameObject = GameObject.Find("Level");
 
         foreach(Transform t in levelGameObject.transform)
-            if(t.tag == "Blocker")
+            if(t.tag == LithtechTags.Blocker)
                 t.gameObject.SetActive(b);
     }
 
@@ -151,16 +151,25 @@ public class ObjectPicker : MonoBehaviour
         var levelGameObject = GameObject.Find("Level");
 
         foreach(Transform t in levelGameObject.transform)
-            if(t.tag == "Volumes")
+            if(t.tag == LithtechTags.Volumes)
                 t.gameObject.SetActive(b);
     }
 
-    public void ToggleAIRails(System.Boolean b)
+    public void ToggleAITracks(System.Boolean b)
     {
         var levelGameObject = GameObject.Find("Level");
 
         foreach (Transform t in levelGameObject.transform)
-            if (t.tag == "AITrk")
+            if (t.tag == LithtechTags.AITrack)
+                t.gameObject.SetActive(b);
+    }
+
+    public void ToggleAIBarriers(System.Boolean b)
+    {
+        var levelGameObject = GameObject.Find("Level");
+
+        foreach (Transform t in levelGameObject.transform)
+            if (t.tag == LithtechTags.AIBarrier)
                 t.gameObject.SetActive(b);
     }
 

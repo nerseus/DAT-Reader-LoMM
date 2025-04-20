@@ -17,6 +17,8 @@ public class MainGui : MonoBehaviour
 
     // Some bools for controlling different windows
     private bool bLoadLevelClicked = false;
+    private bool bLoadABCClicked = false;
+    private bool bConvertEverything = false;
     private bool bLoadDefaultLevelClicked = false;
     private bool bClearLevelClicked = false;
     private bool bQuitClicked = false;
@@ -25,13 +27,15 @@ public class MainGui : MonoBehaviour
     private bool bShowAboutWindow = false;
     private bool bObjectViewer = false;
     private bool bGameSelectWindow = false;
+    private bool bABCSelectWindow = false;
 
     //Options
     private float fAmbientSlider = 1.0f;
     private bool bToggleObjects = true;
     private bool bToggleBlockers = true;
     private bool bToggleVolumes = true;
-    private bool bToggleAIRail = true;
+    private bool bToggleAITrack = true;
+    private bool bToggleAIBarrier = true;
     private bool bToggleBSP = true;
     private bool bToggleShadows = false;
 
@@ -56,7 +60,8 @@ public class MainGui : MonoBehaviour
         bToggleObjects = true;
         bToggleBlockers = true;
         bToggleVolumes = true;
-        bToggleAIRail = true;
+        bToggleAITrack = true;
+        bToggleAIBarrier = true;
         bToggleBSP = true;
         bToggleShadows = false;
         bObjectViewer = false;
@@ -64,6 +69,7 @@ public class MainGui : MonoBehaviour
         bLevelLoaded = false;
         bExportAll = false;
         bGameSelectWindow = false;
+        bABCSelectWindow = false;
 
         var objectList = FindAnyObjectByType<ObjectList>();
         Destroy(objectList);
@@ -117,6 +123,16 @@ public class MainGui : MonoBehaviour
             bLoadLevelClicked = false;
             bGameSelectWindow = true;
         }
+        if (bLoadABCClicked)
+        {
+            bLoadABCClicked = false;
+            bABCSelectWindow = true;
+        }
+        if (bConvertEverything)
+        {
+            bConvertEverything = false;
+            UIActionManager.OnConvertEverything?.Invoke();
+        }
         if (bClearLevelClicked)
         {
             bClearLevelClicked = false;
@@ -159,12 +175,17 @@ public class MainGui : MonoBehaviour
         {
             ShowGameSelectWindow();
         }
+        if (bABCSelectWindow)
+        {
+            ShowABCSelectWindow();
+        }
 
         Camera.main.GetComponent<ObjectPicker>().ToggleBlockers(bToggleBlockers);
         Camera.main.GetComponent<ObjectPicker>().ToggleBSP(bToggleBSP);
         Camera.main.GetComponent<ObjectPicker>().ToggleShadows(bToggleShadows);
         Camera.main.GetComponent<ObjectPicker>().ToggleVolumes(bToggleVolumes);
-        Camera.main.GetComponent<ObjectPicker>().ToggleAIRails(bToggleAIRail);
+        Camera.main.GetComponent<ObjectPicker>().ToggleAITracks(bToggleAITrack);
+        Camera.main.GetComponent<ObjectPicker>().ToggleAIBarriers(bToggleAIBarrier);
         Camera.main.GetComponent<ObjectPicker>().ToggleObjects(bToggleObjects);
         importer.gameObject.GetComponent<Controller>().ChangeAmbientLighting(fAmbientSlider);
 
@@ -186,6 +207,22 @@ public class MainGui : MonoBehaviour
         {
             bGameSelectWindow = false;
             UIActionManager.OnPreLoadLevel?.Invoke();
+        }
+
+        ImGui.End();
+    }
+
+    private void ShowABCSelectWindow()
+    {
+        ImGui.SetNextWindowSize(new Vector2(350, 300));
+        ImGui.SetNextWindowPos(new Vector2(Screen.width / 2 - 175, Screen.height / 2 - 150));
+        ImGui.Begin("Select ABC", ref bABCSelectWindow, ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse);
+
+        Vector2 buttonSize = new Vector2(ImGui.GetWindowContentRegionWidth(), ImGui.GetWindowHeight() - 80f);
+        if (ImGui.Button("Load .ABC", buttonSize))
+        {
+            bABCSelectWindow = false;
+            UIActionManager.OnPreLoadABC?.Invoke();
         }
 
         ImGui.End();
@@ -216,7 +253,8 @@ public class MainGui : MonoBehaviour
         ImGui.Checkbox("Show/Hide Objects", ref bToggleObjects);
         ImGui.Checkbox("Show/Hide Blockers", ref bToggleBlockers);
         ImGui.Checkbox("Show/Hide Volumes", ref bToggleVolumes);
-        ImGui.Checkbox("Show/Hide AI Rail", ref bToggleAIRail);
+        ImGui.Checkbox("Show/Hide AI Rail", ref bToggleAITrack);
+        ImGui.Checkbox("Show/Hide AI Barrier", ref bToggleAIBarrier);
 
         ImGui.NextColumn();
         ImGui.SliderFloat("Ambient", ref fAmbientSlider, 0.0f, 2.0f);
@@ -251,8 +289,10 @@ public class MainGui : MonoBehaviour
         ImGui.SetNextWindowBgAlpha(1.0f);
         if (ImGui.BeginMenu("File"))
         {
+            ImGui.MenuItem("Convert Everything", null, ref bConvertEverything);
             ImGui.MenuItem("Load Default Level", null, ref bLoadDefaultLevelClicked);
             ImGui.MenuItem("Load Level", null, ref bLoadLevelClicked);
+            ImGui.MenuItem("Load ABC", null, ref bLoadABCClicked);
 
             if (bLevelLoaded)
                 ImGui.MenuItem("Clear Level", null, ref bClearLevelClicked);

@@ -10,6 +10,7 @@ using static LithFAQ.LTTypes;
 using static LithFAQ.LTUtils;
 using static Utility.MaterialSafeMeshCombine;
 using static DTX;
+using UnityEditor.ShaderGraph.Internal;
 
 
 namespace LithFAQ
@@ -24,7 +25,7 @@ namespace LithFAQ
         public float UNITYSCALEFACTOR = 0.01f; //default scale to fit in Unity's world.
         public Importer importer;
 
-        public ModelToGameObject abc;
+        public ModelToGameObject modelToGameObject;
 
 
         public void OnEnable()
@@ -42,7 +43,7 @@ namespace LithFAQ
             importer = GetComponent<Importer>();
             gameObject.AddComponent<Dispatcher>();
 
-            abc = gameObject.AddComponent<ModelToGameObject>();
+            modelToGameObject = gameObject.AddComponent<ModelToGameObject>();
         }
 
         public void ClearLevel()
@@ -97,7 +98,7 @@ namespace LithFAQ
                 DestroyImmediate(mat);
             }
 
-            importer.dtxMaterialList = new DTXMaterial();
+            importer.dtxMaterialList = new DTXMaterialLibrary();
 
             Resources.UnloadUnusedAssets();
 
@@ -144,6 +145,260 @@ namespace LithFAQ
                         c.ModelFilename = mDef.szModelFileName;
                     }
                 }
+            }
+
+        }
+
+        private bool IsVolume(WorldBsp tBSP)
+        {
+            return (tBSP.m_aszTextureNames[0].Contains("AI.dtx", StringComparison.OrdinalIgnoreCase) ||
+                tBSP.m_aszTextureNames[0].Contains("sound.dtx", StringComparison.OrdinalIgnoreCase) ||
+                tBSP.m_szWorldName.Contains("volume", StringComparison.OrdinalIgnoreCase) ||
+                tBSP.m_szWorldName.Contains("Wwater") ||
+                tBSP.m_szWorldName.Contains("weather", StringComparison.OrdinalIgnoreCase) ||
+                tBSP.m_szWorldName.Contains("rain", StringComparison.OrdinalIgnoreCase) &&
+                !tBSP.m_szWorldName.Contains("terrain", StringComparison.OrdinalIgnoreCase) ||
+                tBSP.m_szWorldName.Contains("poison", StringComparison.OrdinalIgnoreCase) ||
+                tBSP.m_szWorldName.Contains("corrosive", StringComparison.OrdinalIgnoreCase) ||
+                tBSP.m_szWorldName.Contains("ladder", StringComparison.OrdinalIgnoreCase));
+        }
+
+        private void SetTag(GameObject mainObject, WorldBsp tBSP)
+        {
+            if (IsVolume(tBSP))
+            {
+                mainObject.tag = LithtechTags.Volumes;
+            }
+            else if (tBSP.m_szWorldName.Contains("AITrk", StringComparison.OrdinalIgnoreCase))
+            {
+                mainObject.tag = LithtechTags.AITrack;
+            }
+            else if (tBSP.m_szWorldName.Contains("AIBarrier", StringComparison.OrdinalIgnoreCase))
+            {
+                mainObject.tag = LithtechTags.AIBarrier;
+            }
+        }
+
+        private bool IsTextureInvisible(string textureName, bool includeGlobaOpsNames, bool isSky)
+        {
+            if (isSky)
+            {
+                return true;
+            }
+
+            if (textureName.Contains("invisible", StringComparison.OrdinalIgnoreCase))
+            { 
+                return true;
+            }
+
+            if (textureName.Contains("Invisible.dtx", StringComparison.OrdinalIgnoreCase)
+                   || textureName.Contains("Sky.dtx", StringComparison.OrdinalIgnoreCase)
+                   || textureName.Contains("Rain.dtx", StringComparison.OrdinalIgnoreCase)
+                   || textureName.Contains("hull.dtx", StringComparison.OrdinalIgnoreCase)
+                   || textureName.Contains("occluder.dtx", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (includeGlobaOpsNames)
+            {
+                if (textureName.Contains("sector.dtx", StringComparison.OrdinalIgnoreCase)
+                   || textureName.Contains("Sound_Environment.dtx", StringComparison.OrdinalIgnoreCase)
+                   || textureName.Contains("Useable.dtx", StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private Material AddAndGetChromaMaterialIfNeeded(Material material, string bspWorldName, bool isTranslucent, bool isInvisible, GameObject mainObject)
+        {
+            var possibleTWM = GameObject.Find(bspWorldName + "_obj");
+            if (possibleTWM)
+            {
+                var twm = possibleTWM.GetComponent<TranslucentWorldModel>();
+                if (twm)
+                {
+                    if (twm.bChromakey || isTranslucent)
+                    {
+                        // Try to find already existing material
+                        // Create (or use previously saved) translucent version of the texture.
+                        if (importer.dtxMaterialList.materials.ContainsKey(material.name + "_Chromakey"))
+                        {
+                            material = importer.dtxMaterialList.materials[material.name + "_Chromakey"];
+                        }
+                        else
+                        {
+                            //copy material from matReference to a new
+                            Material newMaterial = new Material(Shader.Find("Shader Graphs/Lithtech Vertex Transparent"));
+                            newMaterial.name = material.name + "_Chromakey";
+                            newMaterial.mainTexture = material.mainTexture;
+                            newMaterial.SetInt("_Chromakey", 1);
+                            material = newMaterial;
+                            AddMaterialToMaterialDictionary(newMaterial.name, newMaterial, importer.dtxMaterialList);
+                        }
+                    }
+
+                    if (isInvisible || !twm.bVisible)
+                    {
+                        mainObject.tag = LithtechTags.Blocker;
+                    }
+                }
+            }
+
+            return material;
+        }
+
+        private void CreateChildMeshes(WorldPoly tPoly, WorldBsp tBSP, int id, Material material, Transform parentTransform, TextureSize textureSize)
+        {
+            // Convert OPQ to UV magic
+            Vector3 center = tPoly.m_vCenter;
+            Vector3 o = tPoly.GetSurface(tBSP).m_fUV1;
+            Vector3 p = tPoly.GetSurface(tBSP).m_fUV2;
+            Vector3 q = tPoly.GetSurface(tBSP).m_fUV3;
+
+            o *= UNITYSCALEFACTOR;
+            o -= (Vector3)tPoly.m_vCenter;
+            p /= UNITYSCALEFACTOR;
+            q /= UNITYSCALEFACTOR;
+
+            // CALCULATE EACH TRI INDIVIDUALLY.
+            for (int nTriIndex = 0; nTriIndex < tPoly.m_nLoVerts - 2; nTriIndex++)
+            {
+                Vector3[] vertexList = new Vector3[tPoly.m_nLoVerts];
+                Vector3[] _aVertexNormalList = new Vector3[tPoly.m_nLoVerts];
+                Color[] _aVertexColorList = new Color[tPoly.m_nLoVerts];
+                Vector2[] _aUVList = new Vector2[tPoly.m_nLoVerts];
+                int[] _aTriangleIndices = new int[3];
+
+                GameObject go = new GameObject(tBSP.WorldName + id);
+                // TTTT - Made static for lighting
+                go.isStatic = true;
+                go.transform.parent = parentTransform;
+                MeshRenderer mr = go.AddComponent<MeshRenderer>();
+                MeshFilter mf = go.AddComponent<MeshFilter>();
+
+                Mesh m = new Mesh();
+
+                for (int vCount = 0; vCount < tPoly.m_nLoVerts; vCount++)
+                {
+                    WorldVertex tVertex = tBSP.m_pPoints[(int)tPoly.m_aVertexColorList[vCount].nVerts];
+
+                    Vector3 data = tVertex.m_vData;
+                    data *= UNITYSCALEFACTOR;
+                    vertexList[vCount] = data;
+
+                    Color color = new Color(
+                        tPoly.m_aVertexColorList[vCount].red / 255,
+                        tPoly.m_aVertexColorList[vCount].green / 255,
+                        tPoly.m_aVertexColorList[vCount].blue / 255,
+                        1.0f);
+                    _aVertexColorList[vCount] = color;
+                    _aVertexNormalList[vCount] = tBSP.m_pPlanes[tPoly.m_nPlane].m_vNormal;
+
+                    // Calculate UV coordinates based on the OPQ vectors
+                    // Note that since the worlds are offset from 0,0,0 sometimes we need to subtract the center point
+                    Vector3 curVert = vertexList[vCount];
+                    float u = Vector3.Dot((curVert - center) - o, p);
+                    float v = Vector3.Dot((curVert - center) - o, q);
+
+                    //Scale back down into something more sane
+                    u /= textureSize.EngineWidth;
+                    v /= textureSize.EngineHeight;
+
+                    _aUVList[vCount] = new Vector2(u, v);
+                }
+
+                m.SetVertices(vertexList);
+                m.SetNormals(_aVertexNormalList);
+                m.SetUVs(0, _aUVList);
+                m.SetColors(_aVertexColorList);
+
+                // Hacky, whatever
+                _aTriangleIndices[0] = 0;
+                _aTriangleIndices[1] = nTriIndex + 1;
+                _aTriangleIndices[2] = (nTriIndex + 2) % tPoly.m_nLoVerts;
+
+                // Set triangles
+                m.SetTriangles(_aTriangleIndices, 0);
+                m.RecalculateTangents();
+
+                mr.material = material;
+                mf.mesh = m;
+
+                mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.TwoSided;
+            }
+        }
+
+        private void CombineMeshes(GameObject levelGameObject)
+        {
+            // Combine all meshes not named PhysicsBSP
+            foreach (var t in levelGameObject.GetComponentsInChildren<MeshFilter>())
+            {
+                if (t.transform.gameObject.name != "PhysicsBSP")
+                {
+                    t.gameObject.MeshCombine(true);
+                }
+            }
+
+            var gPhysicsBSP = GameObject.Find("PhysicsBSP");
+            gPhysicsBSP.MeshCombine(true);
+
+            // After mesh combine, we need to recalculate the normals
+            MeshFilter[] meshFilters = gPhysicsBSP.GetComponentsInChildren<MeshFilter>();
+            foreach (MeshFilter mf in meshFilters)
+            {
+                //mf.mesh.Optimize();
+                mf.mesh.RecalculateNormals();
+                mf.mesh.RecalculateTangents();
+            }
+        }
+
+        private void AddColliders(GameObject levelGameObject)
+        {
+            // Assign the mesh collider to the combined meshes
+            
+            foreach (var t in levelGameObject.GetComponentsInChildren<MeshFilter>())
+            {
+                var mc = t.transform.gameObject.AddComponent<MeshCollider>();
+                mc.sharedMesh = t.mesh;
+            }
+        }
+
+        private void CreateBSPChildMeshes(WorldBsp tBSP, GameObject mainObject, ref int id)
+        {
+            foreach (WorldPoly tPoly in tBSP.m_pPolies)
+            {
+                // remove all bsp invisible
+                var textureName = tBSP.m_aszTextureNames[tPoly.GetSurface(tBSP).m_nTexture];
+                var surfaceFlags = tPoly.GetSurface(tBSP).m_nFlags;
+                bool isSky = (surfaceFlags & (int)BitMask.SKY) == (int)BitMask.SKY;
+                bool isTranslucent = (surfaceFlags & (int)BitMask.TRANSLUCENT) == (int)BitMask.TRANSLUCENT;
+                bool isInvisible = (surfaceFlags & (int)BitMask.INVISIBLE) == (int)BitMask.INVISIBLE;
+
+                if (IsTextureInvisible(textureName, importer.eGame == Game.GLOBALOPS, isSky))
+                {
+                    continue;
+                }
+
+                // TTTT Make things invis
+                if (isInvisible)
+                {
+                    // Set texture index to last in the array of texture names.
+                    tBSP.m_pSurfaces[tPoly.m_nSurface].m_nTexture = (short)(tBSP.m_aszTextureNames.Count - 1);
+                }
+
+                TextureSize textureSize = importer.dtxMaterialList.texSize[textureName];
+                Material matReference = importer.dtxMaterialList.materials[textureName];
+
+                // Check if the material needs to add the Chroma flag - which requires (possibly) creating a new Material based on the original texture.
+                // May also update the tag of the mainObject
+                matReference = AddAndGetChromaMaterialIfNeeded(matReference, tBSP.WorldName, isTranslucent, isInvisible, mainObject);
+
+                CreateChildMeshes(tPoly, tBSP, id, matReference, mainObject.transform, textureSize);
+                id++;
             }
 
         }
@@ -205,280 +460,51 @@ namespace LithFAQ
             await System.Threading.Tasks.Task.Yield();
 
             int id = 0;
-            // TTTT - Fix this:
             foreach (WorldBsp tBSP in bspListTest)
-            //foreach (WorldBsp tBSP in new List<WorldBsp>())
             {
-
                 if (tBSP.m_szWorldName.Contains("PhysicsBSP"))
                 {
                     importer.loadingUI.text = "Loading BSP";
                     await System.Threading.Tasks.Task.Yield();
                 }
 
-                if (tBSP.m_szWorldName != "VisBSP")
+                if (tBSP.m_szWorldName == "VisBSP")
                 {
-                    bool isPartOfObject = !tBSP.m_szWorldName.Contains("PhysicsBSP");
-
-                    GameObject mainObject = new GameObject(tBSP.WorldName);
-                    mainObject.transform.parent = this.transform;
-                    mainObject.AddComponent<MeshFilter>();
-                    mainObject.AddComponent<MeshRenderer>().material = importer.defaultMaterial;
-
-                    if (tBSP.m_aszTextureNames[0].Contains("AI.dtx", StringComparison.OrdinalIgnoreCase) ||
-                        tBSP.m_aszTextureNames[0].Contains("sound.dtx", StringComparison.OrdinalIgnoreCase) ||
-                        tBSP.m_szWorldName.Contains("volume", StringComparison.OrdinalIgnoreCase) ||
-                        tBSP.m_szWorldName.Contains("Wwater") ||
-                        tBSP.m_szWorldName.Contains("weather", StringComparison.OrdinalIgnoreCase) ||
-                        tBSP.m_szWorldName.Contains("rain", StringComparison.OrdinalIgnoreCase) && !tBSP.m_szWorldName.Contains("terrain", StringComparison.OrdinalIgnoreCase) ||
-                        tBSP.m_szWorldName.Contains("poison", StringComparison.OrdinalIgnoreCase) ||
-                        tBSP.m_szWorldName.Contains("corrosive", StringComparison.OrdinalIgnoreCase) ||
-                        tBSP.m_szWorldName.Contains("ladder", StringComparison.OrdinalIgnoreCase)
-                        )
-                    {
-                        mainObject.tag = "Volumes";
-                    }
-                    else if (tBSP.m_szWorldName.Contains("AITrk", StringComparison.OrdinalIgnoreCase))
-                    {
-                        mainObject.tag = "AITrk";
-                    }
-
-                    LoadTexturesForBSP(tBSP);
-
-                    foreach (WorldPoly tPoly in tBSP.m_pPolies)
-                    {
-                        //remove all bsp invisible
-                        if (tBSP.m_aszTextureNames[tPoly.GetSurface(tBSP).m_nTexture].Contains("Invisible.dtx", StringComparison.OrdinalIgnoreCase) ||
-                            tBSP.m_aszTextureNames[tPoly.GetSurface(tBSP).m_nTexture].Contains("Sky.dtx", StringComparison.OrdinalIgnoreCase) ||
-                            tBSP.m_aszTextureNames[tPoly.GetSurface(tBSP).m_nTexture].Contains("Rain.dtx", StringComparison.OrdinalIgnoreCase) ||
-                            tBSP.m_aszTextureNames[tPoly.GetSurface(tBSP).m_nTexture].Contains("hull.dtx", StringComparison.OrdinalIgnoreCase) ||
-                            tBSP.m_aszTextureNames[tPoly.GetSurface(tBSP).m_nTexture].Contains("occluder.dtx", StringComparison.OrdinalIgnoreCase))
-                        {
-                            continue;
-                        }
-
-                        if(importer.eGame == Game.GLOBALOPS)
-                        {
-                            if( tBSP.m_aszTextureNames[tPoly.GetSurface(tBSP).m_nTexture].Contains("sector.dtx", StringComparison.OrdinalIgnoreCase) ||
-                                tBSP.m_aszTextureNames[tPoly.GetSurface(tBSP).m_nTexture].Contains("Sound_Environment.dtx", StringComparison.OrdinalIgnoreCase) ||
-                                tBSP.m_aszTextureNames[tPoly.GetSurface(tBSP).m_nTexture].Contains("Useable.dtx", StringComparison.OrdinalIgnoreCase))
-                            {
-                                continue;
-                            }
-                        }
-
-                        //skip sky portals
-                        var surfaceFlags = tPoly.GetSurface(tBSP).m_nFlags;
-                        if ((surfaceFlags & (int)BitMask.SKY) == (int)BitMask.SKY)
-                        {
-                            continue;
-                        }
-
-                        // TTTT Make things invis
-                        if ((surfaceFlags & (int)BitMask.INVISIBLE) == (int)BitMask.INVISIBLE)
-                        {
-                            // Set texture index to last in the array of texture names.
-                            tBSP.m_pSurfaces[tPoly.m_nSurface].m_nTexture = (short)(tBSP.m_aszTextureNames.Count - 1);
-                        }
-
-                        float texWidth = 256f;
-                        float texHeight = 256f;
-
-                        string textureName = tBSP.m_aszTextureNames[tBSP.m_pSurfaces[tPoly.m_nSurface].m_nTexture];
-
-                        SetLithTechInternalTextureSize(ref texWidth, ref texHeight, textureName);
-
-                        //Convert OPQ to UV magic
-                        Vector3 center = tPoly.m_vCenter;
-
-                        //Vector3 O = 
-
-                        Vector3 o = tPoly.GetSurface(tBSP).m_fUV1;
-                        Vector3 p = tPoly.GetSurface(tBSP).m_fUV2;
-                        Vector3 q = tPoly.GetSurface(tBSP).m_fUV3;
-
-                        o *= UNITYSCALEFACTOR;
-                        o -= (Vector3)tPoly.m_vCenter;
-                        p /= UNITYSCALEFACTOR;
-                        q /= UNITYSCALEFACTOR;
-
-                        Material matReference = importer.defaultMaterial;
-
-                        if (importer.dtxMaterialList.materials.TryGetValue(textureName, out var material))
-                        {
-                            matReference = material;
-                        }
-
-                        var possibleTWM = GameObject.Find(tBSP.WorldName + "_obj");
-
-                        if (possibleTWM)
-                        {
-
-                            if (textureName.Contains("invisible", StringComparison.OrdinalIgnoreCase))
-                            {
-                                continue;
-                            }
-                            var twm = possibleTWM.GetComponent<TranslucentWorldModel>();
-                            if (twm)
-                            {
-                                if (twm.bChromakey || (tPoly.GetSurface(tBSP).m_nFlags & (int)BitMask.TRANSLUCENT) == (int)BitMask.TRANSLUCENT)
-                                {
-                                    //try to find already existing material
-                                    if (importer.dtxMaterialList.materials.ContainsKey(matReference.name + "_Chromakey"))
-                                    {
-                                        matReference = importer.dtxMaterialList.materials[matReference.name + "_Chromakey"];
-                                    }
-                                    else
-                                    {
-                                        //copy material from matReference to a new
-                                        Material mat = new Material(Shader.Find("Shader Graphs/Lithtech Vertex Transparent"));
-                                        mat.name = matReference.name + "_Chromakey";
-                                        mat.mainTexture = matReference.mainTexture;
-                                        mat.SetInt("_Chromakey", 1);
-                                        matReference = mat;
-                                        AddMaterialToMaterialDictionary(mat.name, mat, importer.dtxMaterialList);
-                                    }
-                                }
-
-                                if ((tPoly.GetSurface(tBSP).m_nFlags & (int)BitMask.INVISIBLE) == (int)BitMask.INVISIBLE)
-                                {
-                                    mainObject.tag = "Blocker";
-                                }
-                                if (!twm.bVisible)
-                                {
-                                    mainObject.tag = "Blocker";
-                                }
-
-                            }
-                        }
-
-                        // CALCULATE EACH TRI INDIVIDUALLY.
-                        // CALCULATE EACH TRI INDIVIDUALLY.
-                        for (int nTriIndex = 0; nTriIndex < tPoly.m_nLoVerts - 2; nTriIndex++)
-                        {
-                            Vector3[] vertexList = new Vector3[tPoly.m_nLoVerts];
-                            Vector3[] _aVertexNormalList = new Vector3[tPoly.m_nLoVerts];
-                            Color[] _aVertexColorList = new Color[tPoly.m_nLoVerts];
-                            Vector2[] _aUVList = new Vector2[tPoly.m_nLoVerts];
-                            int[] _aTriangleIndices = new int[3];
-
-                            GameObject go = new GameObject(tBSP.WorldName + id);
-                            go.transform.parent = mainObject.transform;
-                            MeshRenderer mr = go.AddComponent<MeshRenderer>();
-                            MeshFilter mf = go.AddComponent<MeshFilter>();
-
-                            Mesh m = new Mesh();
-
-                            // Do the thing
-                            for (int vCount = 0; vCount < tPoly.m_nLoVerts; vCount++)
-                            {
-                                WorldVertex tVertex = tBSP.m_pPoints[(int)tPoly.m_aVertexColorList[vCount].nVerts];
-
-                                Vector3 data = tVertex.m_vData;
-                                data *= UNITYSCALEFACTOR;
-                                vertexList[vCount] = data;
-
-                                Color color = new Color(tPoly.m_aVertexColorList[vCount].red / 255, tPoly.m_aVertexColorList[vCount].green / 255, tPoly.m_aVertexColorList[vCount].blue / 255, 1.0f);
-                                _aVertexColorList[vCount] = color;
-
-                                _aVertexNormalList[vCount] = tBSP.m_pPlanes[tPoly.m_nPlane].m_vNormal;
-
-                                // Calculate UV coordinates based on the OPQ vectors
-                                // Note that since the worlds are offset from 0,0,0 sometimes we need to subtract the center point
-                                Vector3 curVert = vertexList[vCount];
-                                float u = Vector3.Dot((curVert - center) - o, p);
-                                float v = Vector3.Dot((curVert - center) - o, q);
-
-                                //Scale back down into something more sane
-                                u /= texWidth;
-                                v /= texHeight;
-
-                                _aUVList[vCount] = new Vector2(u, v);
-                            }
-
-                            m.SetVertices(vertexList);
-                            m.SetNormals(_aVertexNormalList);
-                            m.SetUVs(0, _aUVList);
-                            m.SetColors(_aVertexColorList);
-
-                            //Hacky, whatever
-                            _aTriangleIndices[0] = 0;
-                            _aTriangleIndices[1] = nTriIndex + 1;
-                            _aTriangleIndices[2] = (nTriIndex + 2) % tPoly.m_nLoVerts;
-
-                            // Set triangles
-                            m.SetTriangles(_aTriangleIndices, 0);
-                            m.RecalculateTangents();
-
-                            mr.material = matReference;
-                            mf.mesh = m;
-
-                            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.TwoSided;
-                        }
-
-                        id++;
-                    }
+                    continue;
                 }
+
+                GameObject mainObject = new GameObject(tBSP.WorldName);
+                // TTTT - Made static for lighting
+                mainObject.isStatic = true;
+                mainObject.transform.parent = this.transform;
+                mainObject.AddComponent<MeshFilter>();
+                mainObject.AddComponent<MeshRenderer>().material = importer.defaultMaterial;
+
+                SetTag(mainObject, tBSP);
+                LoadTexturesForBSP(tBSP);
+                CreateBSPChildMeshes(tBSP, mainObject, ref id);
             }
 
             importer.loadingUI.text = "Combining Meshes";
             await System.Threading.Tasks.Task.Yield();
 
-            //combine all meshes not named PhysicsBSP
-            foreach (var t in GameObject.Find("Level").gameObject.GetComponentsInChildren<MeshFilter>())
-            {
-                if (t.transform.gameObject.name != "PhysicsBSP")
-                {
-                    t.gameObject.MeshCombine(true);
-                }
-            }
+            var levelGameObject = GameObject.Find("Level");
+            CombineMeshes(levelGameObject);
+            AddColliders(levelGameObject);
 
-
-            var gPhysicsBSP = GameObject.Find("PhysicsBSP");
-            gPhysicsBSP.MeshCombine(true);
-
-            //after mesh combine, we need to recalculate the normals
-            MeshFilter[] meshFilters = gPhysicsBSP.GetComponentsInChildren<MeshFilter>();
-            foreach (MeshFilter mf in meshFilters)
-            {
-                //mf.mesh.Optimize();
-                mf.mesh.RecalculateNormals();
-                mf.mesh.RecalculateTangents();
-            }
-
-            //Assign the mesh collider to the combined meshes
-            var gLevelRoot = GameObject.Find("Level");
-            foreach (var t in gLevelRoot.gameObject.GetComponentsInChildren<MeshFilter>())
-            {
-                var mc = t.transform.gameObject.AddComponent<MeshCollider>();
-                mc.sharedMesh = t.mesh;
-            }
-
-            //Clip light from behind walls
-            foreach (var t in gLevelRoot.gameObject.GetComponentsInChildren<MeshRenderer>())
+            // Clip light from behind walls
+            foreach (var t in levelGameObject.gameObject.GetComponentsInChildren<MeshRenderer>())
             {
                 t.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.TwoSided;
-            }
-
-            //Loop through all objects under Level and add MeshFilter to a list so we can batch
-            List<GameObject> toBatch = new List<GameObject>();
-
-            foreach (Transform child in gLevelRoot.transform)
-            {
-                if (child.gameObject.GetComponent<MeshFilter>() != null)
-                {
-                    toBatch.Add(child.gameObject);
-                }
             }
 
             importer.loadingUI.enabled = false;
 
             //Batch all the objects
-           // StaticBatchingUtility.Combine(toBatch.ToArray(), gLevelRoot);
+            // StaticBatchingUtility.Combine(toBatch.ToArray(), gLevelRoot);
             await System.Threading.Tasks.Task.Yield();
             
             SetupSkyBoxMaterials();
-
             AddDebugLines();
         }
 
@@ -489,16 +515,17 @@ namespace LithFAQ
         private void SetupSkyBoxMaterials()
         {
             Shader shaderUnlitTransparent = Shader.Find("Unlit/Transparent");
-
             foreach (var item in LTGameObjects.obj)
             {
                 if (!item.objectName.Contains("SkyPointer", StringComparison.OrdinalIgnoreCase))
+                {
                     continue;
+                }
 
-                var twmName = (string)item.options["SkyObjectName"];
-                var twmTranslucentWorldModel = GameObject.Find(twmName);
+                var skyObjectName = (string)item.options["SkyObjectName"];
+                var skyObjectModel = GameObject.Find(skyObjectName);
 
-                if (!twmTranslucentWorldModel) continue;
+                if (!skyObjectModel) continue;
 
                 bool bHasIndex = item.options.ContainsKey("Index");
                 float nIndex = 0;
@@ -509,7 +536,7 @@ namespace LithFAQ
                     nIndex = BitConverter.ToSingle(aBytes, 0);
                 }
 
-                foreach (var mrMeshRenderer in twmTranslucentWorldModel.GetComponentsInChildren<MeshRenderer>())
+                foreach (var mrMeshRenderer in skyObjectModel.GetComponentsInChildren<MeshRenderer>())
                 {
                     //set layer to 8 which is SkyBox so it doessssn't get rendered by the Main Camera.
                     mrMeshRenderer.gameObject.layer = 8;
@@ -534,26 +561,7 @@ namespace LithFAQ
             //Load texture
             foreach (var tex in tBSP.m_aszTextureNames)
             {
-                DTX.LoadDTX(tex, importer.dtxMaterialList, importer.szProjectPath);
-            }
-        }
-
-        private void SetLithTechInternalTextureSize(ref float texWidth, ref float texHeight, string szTextureName)
-        {
-            //Lookup the width and height the engine uses to calculate UV's
-            //UI Mipmap Offset changes this
-            if (importer.dtxMaterialList.texSize.ContainsKey(szTextureName))
-            {
-                if(!importer.dtxMaterialList.texSize.ContainsKey(szTextureName))
-                {
-                    texWidth = 256f;
-                    texHeight = 256f;
-                }
-                else
-                {
-                    texWidth = importer.dtxMaterialList.texSize[szTextureName].EngineWidth;
-                    texHeight = importer.dtxMaterialList.texSize[szTextureName].EngineHeight;
-                }
+                DTX.LoadDTXIntoLibrary(tex, importer.dtxMaterialList, importer.szProjectPath);
             }
         }
 
@@ -651,7 +659,7 @@ namespace LithFAQ
                     //find child gameobject named Icon
                     var icon = tempObject.transform.Find("Icon");
                     icon.GetComponent<MeshRenderer>().material.mainTexture = Resources.Load<Texture2D>("Gizmos/worldproperties");
-                    icon.gameObject.tag = "NoRayCast";
+                    icon.gameObject.tag = LithtechTags.NoRayCast;
                     icon.gameObject.layer = 7;
                 }
                 else if (obj.objectName == "SoundFX" || obj.objectName == "AmbientSound")
@@ -659,7 +667,7 @@ namespace LithFAQ
                     //find child gameobject named Icon
                     var icon = tempObject.transform.Find("Icon");
                     icon.GetComponent<MeshRenderer>().material.mainTexture = Resources.Load<Texture2D>("Gizmos/sound");
-                    icon.gameObject.tag = "NoRayCast";
+                    icon.gameObject.tag = LithtechTags.NoRayCast;
                     icon.gameObject.layer = 7;
 
                     AudioSource temp = tempObject.AddComponent<AudioSource>();
@@ -734,11 +742,11 @@ namespace LithFAQ
                     //find child gameobject named Icon
                     var icon = tempObject.transform.Find("Icon");
                     icon.GetComponent<MeshRenderer>().material.mainTexture = Resources.Load<Texture2D>("Gizmos/light");
-                    icon.gameObject.tag = "NoRayCast";
+                    icon.gameObject.tag = LithtechTags.NoRayCast;
                     icon.gameObject.layer = 7;
 
                     var light = tempObject.gameObject.AddComponent<Light>();
-
+                    light.lightmapBakeType = LightmapBakeType.Baked;
 
                     foreach (var subItem in obj.options)
                     {
@@ -775,7 +783,7 @@ namespace LithFAQ
                     //find child gameobject named Icon
                     var icon = tempObject.transform.Find("Icon");
                     icon.GetComponent<MeshRenderer>().material.mainTexture = Resources.Load<Texture2D>("Gizmos/light");
-                    icon.gameObject.tag = "NoRayCast";
+                    icon.gameObject.tag = LithtechTags.NoRayCast;
                     icon.gameObject.layer = 7;
                     var light = tempObject.gameObject.AddComponent<Light>();
 
@@ -823,7 +831,7 @@ namespace LithFAQ
                     //find child gameobject named Icon
                     var icon = tempObject.transform.Find("Icon");
                     icon.GetComponent<MeshRenderer>().material.mainTexture = Resources.Load<Texture2D>("Gizmos/light");
-                    icon.gameObject.tag = "NoRayCast";
+                    icon.gameObject.tag = LithtechTags.NoRayCast;
                     icon.gameObject.layer = 7;
                     var light = tempObject.gameObject.AddComponent<Light>();
 
@@ -865,19 +873,19 @@ namespace LithFAQ
 
                     var temp = importer.CreateModelDefinition(szName, ModelType.Character, obj.options);
                     var hasGravity = obj.options.ContainsKey("Gravity") ? (bool)obj.options["Gravity"] : false;
-                    var gos = abc.LoadABC(temp, tempObject.transform, hasGravity);
+                    var gos = modelToGameObject.LoadABC(temp, tempObject.transform, hasGravity);
 
                     if (gos != null)
                     {
                         gos.transform.position = tempObject.transform.position;
                         gos.transform.eulerAngles = rot;
-                        gos.tag = "NoRayCast";
+                        gos.tag = LithtechTags.NoRayCast;
                     }
 
                     //find child gameobject named Icon
                     var icon = tempObject.transform.Find("Icon");
                     icon.GetComponent<MeshRenderer>().material.mainTexture = Resources.Load<Texture2D>("Gizmos/gsp");
-                    icon.gameObject.tag = "NoRayCast";
+                    icon.gameObject.tag = LithtechTags.NoRayCast;
                     icon.gameObject.layer = 7;
                 }
                 else if (obj.objectName == "WeaponItem")
@@ -893,13 +901,13 @@ namespace LithFAQ
 
                     var temp = importer.CreateModelDefinition(szName, ModelType.WeaponItem, obj.options);
                     var hasGravity = obj.options.ContainsKey("Gravity") ? (bool)obj.options["Gravity"] : false;
-                    var gos = abc.LoadABC(temp, tempObject.transform, hasGravity);
+                    var gos = modelToGameObject.LoadABC(temp, tempObject.transform, hasGravity);
 
                     if (gos != null)
                     {
                         gos.transform.position = tempObject.transform.position;
                         gos.transform.eulerAngles = rot;
-                        gos.tag = "NoRayCast";
+                        gos.tag = LithtechTags.NoRayCast;
                         gos.layer = 2;
                     }
 
@@ -917,13 +925,13 @@ namespace LithFAQ
 
                     var temp = importer.CreateModelDefinition(szName, ModelType.PropType, obj.options);
                     var hasGravity = obj.options.ContainsKey("Gravity") ? (bool)obj.options["Gravity"] : false;
-                    var gos = abc.LoadABC(temp, tempObject.transform, hasGravity);
+                    var gos = modelToGameObject.LoadABC(temp, tempObject.transform, hasGravity);
 
                     if (gos != null)
                     {
                         gos.transform.position = tempObject.transform.position;
                         gos.transform.eulerAngles = rot;
-                        gos.tag = "NoRayCast";
+                        gos.tag = LithtechTags.NoRayCast;
                     }
                 }
                 else if (
@@ -955,13 +963,13 @@ namespace LithFAQ
 
                     var temp = importer.CreateModelDefinition(szName, ModelType.Prop, obj.options);
                     var hasGravity = obj.options.ContainsKey("Gravity") ? (bool)obj.options["Gravity"] : false;
-                    var gos = abc.LoadABC(temp, tempObject.transform, hasGravity);
+                    var gos = modelToGameObject.LoadABC(temp, tempObject.transform, hasGravity);
 
                     if (gos != null)
                     {
                         gos.transform.position = tempObject.transform.position;
                         gos.transform.eulerAngles = rot;
-                        gos.tag = "NoRayCast";
+                        gos.tag = LithtechTags.NoRayCast;
 
                         if (obj.options.ContainsKey("Scale"))
                         {
@@ -984,13 +992,13 @@ namespace LithFAQ
 
                     var temp = importer.CreateModelDefinition(szName, ModelType.Princess, obj.options);
                     var hasGravity = obj.options.ContainsKey("Gravity") ? (bool)obj.options["Gravity"] : false;
-                    var gos = abc.LoadABC(temp, tempObject.transform, hasGravity);
+                    var gos = modelToGameObject.LoadABC(temp, tempObject.transform, hasGravity);
 
                     if (gos != null)
                     {
                         gos.transform.position = tempObject.transform.position;
                         gos.transform.eulerAngles = rot;
-                        gos.tag = "NoRayCast";
+                        gos.tag = LithtechTags.NoRayCast;
 
                         if (obj.options.ContainsKey("Scale"))
                         {
@@ -1007,7 +1015,7 @@ namespace LithFAQ
                     //find child gameobject named Icon
                     var icon = tempObject.transform.Find("Icon");
                     icon.GetComponent<MeshRenderer>().material.mainTexture = Resources.Load<Texture2D>("Gizmos/trigger");
-                    icon.gameObject.tag = "NoRayCast";
+                    icon.gameObject.tag = LithtechTags.NoRayCast;
                     icon.gameObject.layer = 7;
                 }
                 // Generic Monster type - has a Filename but no skin
@@ -1022,13 +1030,13 @@ namespace LithFAQ
 
                     var temp = importer.CreateModelDefinition(szName, ModelType.Monster, obj.options);
                     var hasGravity = obj.options.ContainsKey("Gravity") ? (bool)obj.options["Gravity"] : false;
-                    var gos = abc.LoadABC(temp, tempObject.transform, hasGravity);
+                    var gos = modelToGameObject.LoadABC(temp, tempObject.transform, hasGravity);
 
                     if (gos != null)
                     {
                         gos.transform.position = tempObject.transform.position;
                         gos.transform.eulerAngles = rot;
-                        gos.tag = "NoRayCast";
+                        gos.tag = LithtechTags.NoRayCast;
 
                         if (obj.options.ContainsKey("Scale"))
                         {

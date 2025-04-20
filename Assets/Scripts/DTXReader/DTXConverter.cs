@@ -4,7 +4,9 @@ using System.Linq;
 using UnityEngine;
 
 public static class DTXConverter
-{ 
+{
+    private static bool ShowLogError = false;
+
     /// <summary>
     /// Converts a Texture2D to ARGB32.
     /// </summary>
@@ -187,7 +189,11 @@ public static class DTXConverter
         var expectedSize = 8 + (256 * 4) + (model.Header.BaseWidth * model.Header.BaseHeight);
         if (model.Data.Length < expectedSize)
         {
-            Debug.LogError("Invalid DTX? Not enough data to support an 8 bit palette texture!");
+            if (ShowLogError)
+            {
+                Debug.LogError("Invalid DTX? Not enough data to support an 8 bit palette texture!");
+            }
+
             return null;
         }
 
@@ -319,6 +325,34 @@ public static class DTXConverter
         return texture2D;
     }
 
+    public static Material CreateDefaultMaterial(string name, Texture2D texture, bool useFullbright = false, bool useChromaKey = false)
+    {
+        Material material = new Material(Shader.Find("Shader Graphs/Lithtech Vertex"));
+        material.name = name;
+        material.mainTexture = texture;
+
+        if (useFullbright)
+        {
+            material.SetInt("_FullBright", 1);
+        }
+
+        if (useChromaKey)
+        {
+            material.SetInt("_Chromakey", 1);
+            material.SetFloat("NormalIntensityAmount", 0); // turn off normal calculation for now.
+            material.SetFloat("_Metallic", 0.9f);
+            material.SetFloat("_Smoothness", 0.8f);
+            material.SetColor("_Color", Color.white);
+        }
+        else
+        {
+            material.SetFloat("_Metallic", 0.9f);
+            material.SetFloat("_Smoothness", 0.8f);
+        }
+
+        return material;
+    }
+
     public static UnityDTX ConvertDTX(DTXModel model)
     {
         Texture2D texture2D = ReadTextureData(model);
@@ -329,6 +363,11 @@ public static class DTXConverter
 
         texture2D.wrapMode = TextureWrapMode.Repeat;
         Texture2D convertedTexture2D = ConvertTextureToArgb32(texture2D);
+        if (convertedTexture2D == null)
+        {
+            return null;
+        }
+
         convertedTexture2D.wrapMode = TextureWrapMode.Repeat;
 
         FlipTexture(convertedTexture2D);
@@ -354,8 +393,7 @@ public static class DTXConverter
 
         var unityDTX = new UnityDTX
         {
-            Header = model.Header,
-            RelativePathToDTX = model.RelativePathToDTX,
+            DTXModel = model,
             Material = material,
             Texture2D = convertedTexture2D,
             TextureSize = textureSize

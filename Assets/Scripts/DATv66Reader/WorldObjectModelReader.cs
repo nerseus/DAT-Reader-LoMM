@@ -24,7 +24,7 @@ namespace LithFAQ
 
                 var dataLength = binaryReader.ReadInt16(); //read out property length
 
-                theObject.objectName = ReadString(dataLength, ref binaryReader); // read our name
+                theObject.ObjectType = ReadString(dataLength, ref binaryReader); // read our name
 
                 theObject.objectEntries = binaryReader.ReadInt32();// read how many properties this object has
 
@@ -33,6 +33,13 @@ namespace LithFAQ
                 {
                     var nObjectPropertyDataLength = binaryReader.ReadInt16();
                     string szPropertyName = ReadString(nObjectPropertyDataLength, ref binaryReader);
+
+                    // Sometimes an object has the same key twice but different spelling - like RayHit or Rayhit.
+                    // They seem to have the same value so just remove the key if found and let it get replaced below.
+                    if (theObject.options.ContainsKey(szPropertyName))
+                    {
+                        theObject.options.Remove(szPropertyName);
+                    }
 
                     PropType propType = (PropType)binaryReader.ReadByte();
 

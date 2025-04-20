@@ -2,7 +2,7 @@
 
 public static class SPRReader
 {
-    public static UnitySPR LoadSPRModel(string projectPath, string relativePathToSPR)
+    public static SPRModel LoadSPRModel(string projectPath, string relativePathToSPR)
     {
         string filenameWithFullPath = Path.Combine(projectPath, relativePathToSPR);
         if (!File.Exists(filenameWithFullPath))
@@ -12,17 +12,17 @@ public static class SPRReader
 
         using BinaryReader binaryReader = new BinaryReader(File.Open(filenameWithFullPath, FileMode.Open));
 
-        var numDTX = binaryReader.ReadInt32();
+        var dtxCount = binaryReader.ReadInt32();
 
         // Jump past the header and read the first texture.
         binaryReader.BaseStream.Position = 20; 
-        var unitySPR = new UnitySPR
+        var unitySPR = new SPRModel
         {
             RelativePathToSprite = relativePathToSPR,
-            DTXPaths = new string[numDTX]
+            DTXPaths = new string[dtxCount]
         };
 
-        for (int i = 0; i < numDTX; i++)
+        for (int i = 0; i < dtxCount; i++)
         {
             int strLength = binaryReader.ReadUInt16();
             byte[] strData = binaryReader.ReadBytes(strLength);

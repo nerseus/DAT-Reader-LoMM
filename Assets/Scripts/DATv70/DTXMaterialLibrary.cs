@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 
-public class DTXMaterial
+public class DTXMaterialLibrary
 {
     public Dictionary<string, string> fileNameAndPath { get; set; } = new Dictionary<string, string>();
     public Dictionary<string, Material> materials { get; set; } = new Dictionary<string, Material>();

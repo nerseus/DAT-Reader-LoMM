@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 public class WorldObject
 {
-    public Dictionary<string, object> options;
+    public Dictionary<string, object> options { get; set; }
     public string objectName;
     public string objectType;
     public short dataLength;

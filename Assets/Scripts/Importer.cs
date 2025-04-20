@@ -7,11 +7,14 @@ using static DTX;
 using System.IO;
 using SFB;
 using System;
+using System.Linq;
+using UnityEditor;
+using System.Text;
 
 public class Importer : MonoBehaviour
 {
     [SerializeField]
-    public DTXMaterial dtxMaterialList { get; set; } = new DTXMaterial();
+    public DTXMaterialLibrary dtxMaterialList { get; set; } = new DTXMaterialLibrary();
     public Component DatReader;
     public GameObject RuntimeGizmoPrefab;
 
@@ -37,9 +40,9 @@ public class Importer : MonoBehaviour
         this.szProjectPath = projectPath;
         this.szFileName = Path.GetFileName(pathToDATFile);
 
-        Debug.Log("Project Path: " + this.szProjectPath);
-        Debug.Log("File Name: " + this.szFileName);
-        Debug.Log("File Path: " + pathToDATFile);
+        //Debug.Log("Project Path: " + this.szProjectPath);
+        //Debug.Log("File Name: " + this.szFileName);
+        //Debug.Log("File Path: " + pathToDATFile);
 
         BinaryReader binaryReader = new BinaryReader(File.Open(pathToDATFile, FileMode.Open));
         if (binaryReader == null)
@@ -89,24 +92,127 @@ public class Importer : MonoBehaviour
         OpenDAT(pathToDATFile[0], projectPath[0]);
     }
 
-    public void OpenDefaultDAT()
+    private bool ChooseABCFile()
     {
-        this.nSelectedGame = (int)Game.LOMM;
-        OpenDAT("C:\\LoMM\\Data\\Worlds\\_RESCUEATTHERUINS.DAT", "C:\\LoMM\\Data");
+        ExtensionFilter[] efExtensionFiler = new[] { new ExtensionFilter("Lithtech Model ABC", "abc") };
+
+        // Open file
+        string[] pathToABCFile = StandaloneFileBrowser.OpenFilePanel("Open File", "", efExtensionFiler, false);
+        if (pathToABCFile.Length == 0)
+        {
+            return false;
+        }
+
+        string defaultProjectPath = Path.GetDirectoryName(pathToABCFile[0]);
+        string[] projectPath = StandaloneFileBrowser.OpenFolderPanel("Open Project Path", defaultProjectPath, false);
+        if (projectPath.Length == 0)
+        {
+            if (!string.IsNullOrEmpty(this.szProjectPath))
+            {
+                projectPath = new string[] { this.szProjectPath };
+            }
+            else
+            {
+                projectPath = new string[] { defaultProjectPath };
+            }
+        }
+
+        this.szProjectPath = projectPath[0];
+        this.szFileName = pathToABCFile[0];
+
+        return true;
+    }
+
+    public void OpenABC()
+    {
+        //this.szFileName = "c:\\lomm\\data\\models\\basilisk.abc";
+        //this.szProjectPath = "c:\\lomm\\data\\";
+        //var model = ABCModelReader.LoadABCModel(this.szFileName);
+        //var skinTextures = new List<string> { "c:\\lomm\\data\\skins\\basilisk.dtx" };
+        //CreateABC(model, skinTextures);
+        if (!ChooseABCFile())
+        {
+            return;
+        }
+
+        var model = ABCModelReader.LoadABCModel(this.szFileName, this.szProjectPath);
+        if (model != null)
+        {
+            var matCount = model.GetMaterialCount();
+            if (matCount > 0)
+            {
+                var skinTextures = GetDTXSkins(matCount);
+                if (skinTextures == null)
+                {
+                    return;
+                }
+
+                CreateABC(model, skinTextures);
+            }
+        }
+    }
+
+    private void CreateABC(ABCModel model, List<string> skinTexturesWithFullPath)
+    {
+        List<string> skinTexturesWithRelativePath = skinTexturesWithFullPath.Select(
+            x => Path.GetRelativePath(this.szProjectPath, x))
+            .ToList();
+
+        var abcGameObject = ABCToUnity.CreateObjectFromABC(
+            this.szFileName,
+            skinTexturesWithRelativePath,
+            this.szProjectPath);
+    }
+
+    private List<string> GetDTXSkins(int matCount)
+    {
+        ExtensionFilter[] efExtensionFiler = new[] { new ExtensionFilter("Lithtech Texture DTX", "dtx") };
+
+        // Open file
+        string[] pathToDTXFiles = StandaloneFileBrowser.OpenFilePanel("Open File", "", efExtensionFiler, false);
+        if (pathToDTXFiles.Length == 0)
+        {
+            return null;
+        }
+
+        var skinTextures = pathToDTXFiles.ToList();
+        while (skinTextures.Count < matCount)
+        {
+            var additionalSkinTextures = GetDTXSkins(matCount - skinTextures.Count);
+            if (additionalSkinTextures == null)
+            {
+                return skinTextures;
+            }
+
+            skinTextures.AddRange(additionalSkinTextures);
+        }
+
+        return skinTextures;
     }
 
     public void OnEnable()
     {
         UIActionManager.OnPreLoadLevel += OnPreLoadLevel;
+        UIActionManager.OnPreLoadABC += OnPreLoadABC;
         UIActionManager.OnPreClearLevel += ClearLevel;
         UIActionManager.OnOpenDefaultLevel += OnOpenDefaultLevel;
+        UIActionManager.OnConvertEverything += OnConvertEverything;
     }
 
     public void OnDisable()
     {
         UIActionManager.OnPreLoadLevel -= OnPreLoadLevel;
+        UIActionManager.OnPreLoadABC -= OnPreLoadABC;
         UIActionManager.OnPreClearLevel -= ClearLevel;
         UIActionManager.OnOpenDefaultLevel -= OnOpenDefaultLevel;
+        UIActionManager.OnConvertEverything -= OnConvertEverything;
+    }
+
+    private void OnConvertEverything()
+    {
+        ClearLevel();
+        GetStatsOnEverything();
+        ConvertEverything();
     }
 
     private void OnOpenDefaultLevel()
@@ -119,6 +225,12 @@ public class Importer : MonoBehaviour
     {
         ClearLevel();
         OpenDAT();
+    }
+
+    private void OnPreLoadABC()
+    {
+        ClearLevel();
+        OpenABC();
     }
 
     public void ClearLevel()
@@ -571,6 +683,235 @@ public class Importer : MonoBehaviour
         }
 
         return null;
+    }
+
+    private void OpenDefaultDAT()
+    {
+        this.nSelectedGame = (int)Game.LOMM;
+        //
+        // OpenDAT("C:\\LoMM\\Data\\Worlds\\_RESCUEATTHERUINS.DAT", "C:\\LoMM\\Data");
+        OpenDAT("C:\\LoMM\\Data\\Worlds\\_TEMPLEOFBARK.DAT", "C:\\LoMM\\Data");
+    }
+
+    private bool IsOriginalLoMMMap(string filename)
+    {
+        return filename.Contains("BLOODFEUD.DAT", StringComparison.OrdinalIgnoreCase)
+            || filename.Contains("CHATEAUESCAPE.DAT", StringComparison.OrdinalIgnoreCase)
+            || filename.Contains("CULTOFTHESPIDER.DAT", StringComparison.OrdinalIgnoreCase)
+            || filename.Contains("DIRTYPEWORLDS", StringComparison.OrdinalIgnoreCase)
+            || filename.Contains("DRAGONBLADE.DAT", StringComparison.OrdinalIgnoreCase)
+            || filename.Contains("DRAGONSLAYERS.DAT", StringComparison.OrdinalIgnoreCase)
+            || filename.Contains("DUNGEONRESCUE.DAT", StringComparison.OrdinalIgnoreCase)
+            || filename.Contains("DUNGEONSOFDRAGADUNE.DAT", StringComparison.OrdinalIgnoreCase)
+            || filename.Contains("FAHLTEETOWER.DAT", StringComparison.OrdinalIgnoreCase)
+            || filename.Contains("FORGOTTENKEEP.DAT", StringComparison.OrdinalIgnoreCase)
+            || filename.Contains("GAUNTLET.DAT", StringComparison.OrdinalIgnoreCase)
+            || filename.Contains("HIDEOUT.DAT", StringComparison.OrdinalIgnoreCase)
+            || filename.Contains("ISLEOFFIRE.DAT", StringComparison.OrdinalIgnoreCase)
+            || filename.Contains("ONTHERUN.DAT", StringComparison.OrdinalIgnoreCase)
+            || filename.Contains("SECRETSOFTHESPHINX.DAT", StringComparison.OrdinalIgnoreCase)
+            || filename.Contains("SPIDERSDEN.DAT", StringComparison.OrdinalIgnoreCase)
+            || filename.Contains("STONEHAM.DAT", StringComparison.OrdinalIgnoreCase)
+            || filename.Contains("SWORDINTHESTONE.DAT", StringComparison.OrdinalIgnoreCase)
+            || filename.Contains("WEDDINGDAY.DAT", StringComparison.OrdinalIgnoreCase)
+            || filename.Contains("_RESCUEATTHERUINS.DAT", StringComparison.OrdinalIgnoreCase)
+            || filename.Contains("_TEMPLEOFBARK.DAT", StringComparison.OrdinalIgnoreCase);
+
+    }
+
+    private string GetBspSummary(BSPModel model)
+    {
+        return $"WorldName={model.WorldName} | TextureCount={model.TextureCount} | TextureNames.Count={model.TextureNames.Count}";
+    }
+
+    private string GetDATSummary(string filename, DATModel datModel)
+    {
+        string s = $"{Path.GetFileName(filename)}: {datModel.WorldModel.WorldProperties}\r\n";
+
+        var distinctTextureNames = datModel.GetAllBSPTextures();
+
+        s += $"\t\tTexture Count = {distinctTextureNames.Count}\r\n\t\t";
+        s += string.Join("\r\n\t\t", distinctTextureNames.OrderBy(x => x));
+
+        var objectTypes = datModel.WorldObjects
+            .GroupBy(x => x.ObjectType, StringComparer.OrdinalIgnoreCase)
+            .Select(grp => new { ObjectType = grp.Key, Count = grp.Count() })
+            .ToList();
+
+        s += "\r\n\r\nObjectTypes:\r\n\t\t";
+        s += string.Join("\r\n\t\t", objectTypes.OrderByDescending(x => x.Count).Select(x => $"{x.Count} : {x.ObjectType}"));
+
+        return s;
+    }
+
+    private List<string> GetDistinctFileTextures()
+    {
+        var dtxFiles = Directory.GetFiles(this.szProjectPath, "*.dtx", SearchOption.AllDirectories);
+        var sprFiles = Directory.GetFiles(this.szProjectPath, "*.spr", SearchOption.AllDirectories);
+        return (dtxFiles.Union(sprFiles)).Select(x => Path.GetRelativePath(this.szProjectPath, x)).ToList();
+    }
+
+    private List<DATModel> GetDATModels()
+    {
+        //var originalDATFiles = datFiles.Where(x => IsOriginalLoMMMap(x)).ToList();
+        //originalDATFiles = originalDATFiles.Where(x => x.Contains("_RESCUEATTHERUINS.DAT", StringComparison.OrdinalIgnoreCase)).ToList();
+        var datFiles = Directory.GetFiles(this.szProjectPath, "*.dat", SearchOption.AllDirectories);
+        var datModels = new List<DATModel>();
+        foreach (var datFile in datFiles)
+        {
+            var datModel = DATModelReader.ReadDATModel(datFile, this.szProjectPath, Game.LOMM);
+            datModels.Add(datModel);
+        }
+
+        return datModels;
+    }
+
+    private List<ABCModel> GetABCModels()
+    {
+        var abcFiles = Directory.GetFiles(this.szProjectPath, "*.abc", SearchOption.AllDirectories);
+        var abcModels = new List<ABCModel>();
+        foreach (var abcFile in abcFiles)
+        {
+            var abcModel = ABCModelReader.LoadABCModel(abcFile, this.szProjectPath);
+            if (abcModel != null)
+            {
+                abcModels.Add(abcModel);
+            }
+        }
+
+        return abcModels;
+    }
+
+    private List<string> ExtractAllMatches(byte[] data, string searchString)
+    {
+        var results = new List<string>();
+        int searchLength = searchString.Length;
+
+        int currentIndex = 0;
+        while (currentIndex < (data.Length - searchLength))
+        {
+            string fragment = Encoding.UTF8.GetString(data, currentIndex, searchLength);
+            if (fragment.Equals(searchString, StringComparison.OrdinalIgnoreCase))
+            {
+                int startOfStringIndex = currentIndex - 1;
+                while (startOfStringIndex >= 0 && data[startOfStringIndex] != 0)
+                {
+                    startOfStringIndex--;
+                }
+
+                var match = Encoding.UTF8.GetString(data, startOfStringIndex + 1, currentIndex - startOfStringIndex - 1 + searchLength);
+                // Exclude matches that are JUST the searchString.
+                if (match.Length > searchLength)
+                {
+                    results.Add(match);
+                }
+
+                currentIndex += searchLength;
+            }
+            else
+            {
+                currentIndex++;
+            }
+        }
+
+        return results;
+    }
+
+    private List<string> GetLTOTextures()
+    {
+        var data = File.ReadAllBytes(Path.Combine(this.szProjectPath, "object.lto"));
+
+        var sprNames = ExtractAllMatches(data, ".spr");
+        var dtxNames = ExtractAllMatches(data, ".dtx");
+
+        var allNames = sprNames.Concat(dtxNames).ToList();
+        allNames = allNames.Where(x => 
+            !string.Equals(x, "InvalidPV.dtx", StringComparison.OrdinalIgnoreCase) 
+            && !x.StartsWith("%s"))
+            .ToList();
+
+        return allNames;
+    }
+
+    private List<string> GetAllTextures(List<DATModel> datModels)
+    {
+        var bspTextures = datModels.SelectMany(x => x.GetAllBSPTextures())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var filenames = datModels
+            .SelectMany(x => x.GetAllWorldObjectFilenames())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var skins = datModels
+            .SelectMany(x => x.GetAllWorldObjectSkins())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var ltoTextures = GetLTOTextures();
+
+        var allTextures = (bspTextures.Concat(filenames).Concat(skins))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Where(x =>
+                {
+                    var extension = Path.GetExtension(x);
+                    return string.Equals(extension, ".dtx", StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(extension, ".spr", StringComparison.OrdinalIgnoreCase);
+                })
+            .ToList();
+
+        return allTextures;
+    }
+
+    private void ConvertEverything()
+    {
+        this.nSelectedGame = (int)Game.LOMM;
+        this.szProjectPath = "C:\\temp\\LOMMConverted\\OriginalUnrezzed";
+
+        var datModels = GetDATModels();
+        var abcModels = GetABCModels();
+    }
+
+    private void GetStatsOnEverything()
+    {
+        this.nSelectedGame = (int)Game.LOMM;
+        this.szProjectPath = "C:\\temp\\LOMMConverted\\OriginalUnrezzed";
+        
+        var datModels = GetDATModels();
+        var abcModels = GetABCModels();
+
+        var distinctFileTextures = GetDistinctFileTextures();
+        var distinctTextureNames = GetAllTextures(datModels);
+
+        var objectTypes = datModels.SelectMany(x => x.WorldObjects)
+            .GroupBy(x => x.ObjectType, StringComparer.OrdinalIgnoreCase)
+            .Select(grp => new { ObjectType = grp.Key, Count = grp.Count() })
+            .ToList();
+
+        var unusedFiles = distinctFileTextures.Except(distinctTextureNames, StringComparer.OrdinalIgnoreCase).ToList();
+
+        var texturesNotFound = distinctTextureNames.Except(distinctFileTextures, StringComparer.OrdinalIgnoreCase).ToList();
+
+        var filenames = datModels
+            .SelectMany(x => x.GetAllWorldObjectFilenames())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var abcFilesNotUsed = abcModels.Select(x => x.RelativePathToABCFileLowercase).Except(filenames, StringComparer.OrdinalIgnoreCase).ToList();
+
+        string s = string.Empty;
+        s += "ObjectTypes:\r\n\t\t" + string.Join("\r\n\t\t", objectTypes.OrderByDescending(x => x.Count).Select(x => $"{x.Count} : {x.ObjectType}"));
+        s += "\r\n\r\n";
+        s += $"Unused textures:\r\n\t\t" + string.Join("\r\n\t\t", unusedFiles);
+        s += "\r\n\r\n";
+        s += $"Textures not found:\r\n\t\t" + string.Join("\r\n\t\t", texturesNotFound);
+        s += "\r\n\r\n";
+        s += $"ABC Files not referenced by a DAT:\r\n\t\t" + string.Join("\r\n\t\t", abcFilesNotUsed);
+
+        File.WriteAllText("C:\\temp\\Lomm.txt", s);
+
+        Debug.Log("Created file: " + "C:\\temp\\Lomm.txt");
     }
 
     public void Quit()
