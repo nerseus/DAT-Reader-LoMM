@@ -165,7 +165,7 @@ public static class BSPModelReader
         return planes;
     }
 
-    private static List<WorldSurface> ReadSurfaces(BinaryReader binaryReader, int version, int surfaceCount)
+    private static List<WorldSurfaceModel> ReadSurfaces(BinaryReader binaryReader, int version, int surfaceCount)
     {
         if (version == DATVersions.Version66)
         {
@@ -175,41 +175,41 @@ public static class BSPModelReader
         return null;
     }
 
-    private static List<WorldSurface> ReadSurfaces66(BinaryReader binaryReader, int surfaceCount)
+    private static List<WorldSurfaceModel> ReadSurfaces66(BinaryReader binaryReader, int surfaceCount)
     {
-        var surfaces = new List<WorldSurface>();
+        var surfaces = new List<WorldSurfaceModel>();
         if (surfaceCount > 0)
         {
             for (int i = 0; i < surfaceCount; i++)
             {
-                WorldSurface pSurface = new WorldSurface();
-                pSurface.m_fUV1 = ReadLTVector(ref binaryReader);
-                pSurface.m_fUV2 = ReadLTVector(ref binaryReader);
-                pSurface.m_fUV3 = ReadLTVector(ref binaryReader);
-                pSurface.m_nTexture = binaryReader.ReadInt16();
+                WorldSurfaceModel pSurface = new WorldSurfaceModel();
+                pSurface.UV1 = ReadLTVector(ref binaryReader);
+                pSurface.UV2 = ReadLTVector(ref binaryReader);
+                pSurface.UV3 = ReadLTVector(ref binaryReader);
+                pSurface.TextureIndex = binaryReader.ReadInt16();
                 binaryReader.BaseStream.Position += 4;//extra stuff in .dat 66
-                pSurface.m_nFlags = binaryReader.ReadInt32();
-                pSurface.m_nUnknown1 = binaryReader.ReadByte();
-                pSurface.m_nUnknown2 = binaryReader.ReadByte();
-                pSurface.m_nUnknown3 = binaryReader.ReadByte();
-                pSurface.m_nUnknown4 = binaryReader.ReadByte();
-                pSurface.m_nUseEffect = binaryReader.ReadByte();
+                pSurface.Flags = binaryReader.ReadInt32();
+                pSurface.Unknown1 = binaryReader.ReadByte();
+                pSurface.Unknown2 = binaryReader.ReadByte();
+                pSurface.Unknown3 = binaryReader.ReadByte();
+                pSurface.Unknown4 = binaryReader.ReadByte();
+                pSurface.UseEffect = binaryReader.ReadByte();
 
-                if (pSurface.m_nUseEffect > 0)
+                if (pSurface.UseEffect > 0)
                 {
                     Int16 nLen = binaryReader.ReadInt16();
                     if (nLen > 0)
                     {
-                        pSurface.m_szEffect = ReadString(nLen, ref binaryReader);
+                        pSurface.EffectName = ReadString(nLen, ref binaryReader);
                     }
                     nLen = binaryReader.ReadInt16();
                     if (nLen > 0)
                     {
-                        pSurface.m_szEffectParam = ReadString(nLen, ref binaryReader);
+                        pSurface.EffectParams = ReadString(nLen, ref binaryReader);
                     }
                 }
 
-                pSurface.m_nTextureFlags = binaryReader.ReadInt16();
+                pSurface.TextureFlags = binaryReader.ReadInt16();
 
                 surfaces.Add(pSurface);
             }

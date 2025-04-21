@@ -27,7 +27,7 @@ public class BSPModel
     public List<WorldPolyModel> Polies { get; set; } = new List<WorldPolyModel>();
     public List<LeafListModel> Leafs { get; set; } = new List<LeafListModel>();
     public List<WorldPlane> Planes { get; set; } = new List<WorldPlane>();
-    public List<WorldSurface> Surfaces { get; set; } = new List<WorldSurface>();
+    public List<WorldSurfaceModel> Surfaces { get; set; } = new List<WorldSurfaceModel>();
     public List<LTVector> Vertices { get; set; } = new List<LTVector>();
     public List<WorldTreeNode> m_pNodes { get; set; }
     public List<object> m_pUserPortals { get; set; } = new List<object>();

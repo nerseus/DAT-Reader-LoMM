@@ -6,26 +6,29 @@ using System.Linq;
 using System;
 using LithFAQ;
 using Utility;
-using UnityEditor.Connect;
+using UnityEngine.Rendering;
 
 public class DataExtractor : EditorWindow
 {
-    private static bool ShowLogErrors = false;
-
+    private static readonly bool ShowLogErrors = false;
+    private static readonly float UnityScaleFactor = 0.01f;
+    private static readonly string DefaultMaterialPath = $"Assets/Materials/DefaultMaterial.mat";
     private static readonly string ProjectFolder = "C:\\lomm\\data\\";
+
     private static readonly string GeneratedAssetsFolder = "Assets/GeneratedAssets";
-    private static readonly string ABCMeshPath = $"{GeneratedAssetsFolder}/Meshes/ABCModels";
     private static readonly string TexturePath = $"{GeneratedAssetsFolder}/Textures";
+    private static readonly string ABCMeshPath = $"{GeneratedAssetsFolder}/Meshes/ABCModels";
     private static readonly string ModelMaterialPath = $"{GeneratedAssetsFolder}/ModelMaterials";
     private static readonly string ABCPrefabPath = $"{GeneratedAssetsFolder}/Prefabs/ABCModels";
+
+    private static readonly string BSPMaterialPath = $"{GeneratedAssetsFolder}/BSPMaterials";
+    private static readonly string BSPMeshPath = $"{GeneratedAssetsFolder}/Meshes/BSPModels";
     private static readonly string BSPPrefabPath = $"{GeneratedAssetsFolder}/Prefabs/BSPModels";
     private static readonly string ScenePath = $"{GeneratedAssetsFolder}/Scenes";
 
     private static readonly string ModelMaterialChildFolder_FromDAT = "FromDAT";
     private static readonly string ModelMaterialChildFolder_FromNameMatch = "FromNameMatch";
     private static readonly string ModelMaterialChildFolder_NoTexture = "NoTexture";
-
-    private static readonly string DefaultMaterialPath = $"Assets/Materials/DefaultMaterial.mat";
 
     private static Material DefaultMaterial { get; set; }
 
@@ -48,25 +51,90 @@ public class DataExtractor : EditorWindow
         CreateDefaultMaterial();
         CreateGeneratedPaths();
 
-        //if (GetVal())
-        //{
-        //    Debug.Log("Early out!");
-        //    return;
-        //}
+        //if (GetVal()) { Debug.Log("Early out!"); return; }
 
+        // Step 1 - Load everything from the ProjectFolder
         var unityDTXModels = GetAllUnityDTXModels();
         var abcModels = GetABCModels();
         var sprModels = GetAllSPRModels();
         var datModels = GetAllDATModels();
 
+        //var worldObjects = datModels.SelectMany(dat => dat.WorldObjects).ToList();
+        //var properties = worldObjects.SelectMany(worldObject => worldObject.Properties).ToList();
+        //var groupedProperties = properties.GroupBy(p => p.Name);
+        //string s = "Properties:\r\n";
+        //foreach(var group in groupedProperties.OrderByDescending(x => x.Count()))
+        //{
+        //    s += $"{group.Count()} - {group.Key} (type={group.First().PropType})\r\n";
+        //}
+        //Debug.Log(s);
+
+        // var pngFiles = CreateTextures(unityDTXModels);
+
+        // Step 2 - Create assets related to ABC models:
+        // CreateAssetsFromABCModels(abcModels, sprModels, datModels, unityDTXModels, pngFiles);
+
+        // Step 3 - Create assets for BSPs (from DATs)
+        CreateAssetsFromDATModels(abcModels, sprModels, datModels, unityDTXModels);
+
+        // Step 6 - Create meshes for BSPs (from DATs)
+
+        // Step 7 - Create scene prefab with references to BSP mesh, models, lights, etc.
+
+        AssetDatabase.SaveAssets();
+        AssetDatabase.Refresh();
+        Debug.Log("All data extracted.");
+    }
+
+    /// <summary>
+    /// Create assets related to ABC models
+    /// NOTE:   Textures should already exist at the appropriate sub-folder: \{TexturePath}\
+    ///         Materials will look for PNG files located there.
+    ///         Textures are assumed to be PNG files - it looks for this extension specifically.
+    /// 
+    /// Assets created:
+    ///     Materials:
+    ///         \{ModelMaterialPath}\FromDAT\       <-- ABC files found referenced by DAT files (they'll usually have a Skin associated).
+    ///         \{ModelMaterialPath}\FromNameMatch\ <-- ABC files with a same-named DTX/PNG. For example "models\bandit.abc" would find bandit.dtx in any folder.
+    ///
+    ///     Meshes:
+    ///         \{ABCMeshPath}\FromDAT\             <-- ABC files found referenced by DAT files (they'll usually have a Skin associated).
+    ///         \{ABCMeshPath}\FromNameMatch\       <-- ABC files with a same-named DTX/PNG. For example "models\bandit.abc" would find bandit.dtx in any folder.
+    ///         \{ABCMeshPath}\NoTexture\           <-- ABC files with no texture references that can be inferred.
+    ///     
+    ///     Prefabs
+    ///         \{ABCPrefabPath}\FromDAT\           <-- ABC files found referenced by DAT files (they'll usually have a Skin associated).
+    ///         \{ABCPrefabPath}\FromNameMatch\     <-- ABC files with a same-named DTX/PNG. For example "models\bandit.abc" would find bandit.dtx in any folder.
+    /// </summary>
+    /// <param name="abcModels"></param>
+    /// <param name="sprModels"></param>
+    /// <param name="datModels"></param>
+    /// <param name="unityDTXModels"></param>
+    private static void CreateAssetsFromABCModels(List<ABCModel> abcModels, List<SPRModel> sprModels, List<DATModel> datModels, List<UnityDTX> unityDTXModels, List<PNGFileInfo> pngFiles)
+    {
+        // Step 2a - Find skins (textures) for ABC Models
+        ABCReferenceModels abcReferenceModels = GetABCReferences(abcModels, sprModels, datModels, unityDTXModels, pngFiles);
+
+        // Step 2b - Create materials for models
+        CreateModelMaterials(abcReferenceModels.ABCWithSkinsModels, sprModels, unityDTXModels, ModelMaterialChildFolder_FromDAT);
+        CreateModelMaterials(abcReferenceModels.ABCWithPNGModels, unityDTXModels, ModelMaterialChildFolder_FromNameMatch);
+
+        // Step 2c - Create meshes and prefabs.
+        // Only creates a prefab if there's a material referencing the ABCFile.
+        // Otherwise the mesh will be enough. Someone will have to apply a material later.
+        CreateABCPrefabs(abcReferenceModels.ABCWithSkinsModels);
+        CreateABCPrefabs(abcReferenceModels.ABCWithPNGModels);
+        CreateABCPrefabs(abcReferenceModels.ABCModelsWithNoReferences);
+    }
+
+    private static ABCReferenceModels GetABCReferences(List<ABCModel> abcModels, List<SPRModel> sprModels, List<DATModel> datModels, List<UnityDTX> unityDTXModels, List<PNGFileInfo> pngFiles)
+    {
         // Get list of abcModels referenced by a DAT file. The DAT defines the "skins" for the ABC model.
         var abcWithSkinsModels = GetABCWithSkins(abcModels, datModels);
         var abcWithoutSkinsModels = abcModels.Where(
             abcModel => !abcWithSkinsModels.Any(
                 abcWithSkinsModel => abcWithSkinsModel.ABCModel.RelativePathToABCFileLowercase == abcModel.RelativePathToABCFileLowercase))
             .ToList();
-
-        var pngFiles = CreateTextures(unityDTXModels);
 
         // Get list of abcModels that have a matching DTX/PNG by name.
         // For example, If there's a file "cow.abc" that has no reference in any DAT or has no skins defined
@@ -88,15 +156,12 @@ public class DataExtractor : EditorWindow
                 x => x.ABCModel.Name.ToLower() == abcWithoutSkinsModel.Name.ToLower()))
             .ToList();
 
-        CreateMaterials(abcWithSkinsModels, sprModels, unityDTXModels, ModelMaterialChildFolder_FromDAT);
-        CreateMaterials(abcModelsWithMatchingPNG, unityDTXModels, ModelMaterialChildFolder_FromNameMatch);
-        CreateABCPrefabs(abcWithSkinsModels);
-        CreateABCPrefabs(abcModelsWithMatchingPNG);
-        CreateABCPrefabs(abcModelsWithNoReferences);
-
-        AssetDatabase.SaveAssets();
-        AssetDatabase.Refresh();
-        Debug.Log("All data extracted.");
+        return new ABCReferenceModels
+        {
+            ABCWithSkinsModels = abcWithSkinsModels,
+            ABCWithPNGModels = abcModelsWithMatchingPNG,
+            ABCModelsWithNoReferences = abcModelsWithNoReferences
+        };
     }
 
     private static void CreateDefaultMaterial()
@@ -130,7 +195,7 @@ public class DataExtractor : EditorWindow
         return Path.Combine(TexturePath, relativePath, justFilename + ".png");
     }
 
-    private static void CreateMaterials(List<ABCWithSkinModel> abcWithSkinsModels, List<SPRModel> sprModels, List<UnityDTX> unityDTXModels, string childFolderName)
+    private static void CreateModelMaterials(List<ABCWithSkinModel> abcWithSkinsModels, List<SPRModel> sprModels, List<UnityDTX> unityDTXModels, string childFolderName)
     {
         int i = 0;
         foreach (var abcWithSkinsModel in abcWithSkinsModels)
@@ -177,7 +242,7 @@ public class DataExtractor : EditorWindow
         AssetDatabase.Refresh();
     }
 
-    private static void CreateMaterials(List<ABCWithPNGModel> abcWithPNGModels, List<UnityDTX> unityDTXModels, string childFolderName)
+    private static void CreateModelMaterials(List<ABCWithPNGModel> abcWithPNGModels, List<UnityDTX> unityDTXModels, string childFolderName)
     {
         int i = 0;
         foreach (var abcWithPNGModel in abcWithPNGModels)
@@ -229,6 +294,8 @@ public class DataExtractor : EditorWindow
         Directory.CreateDirectory(TexturePath);
         Directory.CreateDirectory(ModelMaterialPath);
         Directory.CreateDirectory(ABCPrefabPath);
+        Directory.CreateDirectory(BSPMaterialPath);
+        Directory.CreateDirectory(BSPMeshPath);
         Directory.CreateDirectory(BSPPrefabPath);
         Directory.CreateDirectory(ScenePath);
     }
@@ -445,22 +512,23 @@ public class DataExtractor : EditorWindow
         return pngFiles;
     }
 
-    private void CombineMeshes(GameObject levelGameObject)
+    private static void CombineMeshes(GameObject rootObject)
     {
         // Combine all meshes not named PhysicsBSP
-        foreach (var t in levelGameObject.GetComponentsInChildren<MeshFilter>())
+        var meshFilters = rootObject.GetComponentsInChildren<MeshFilter>();
+        foreach (var meshFilter in meshFilters)
         {
-            if (t.transform.gameObject.name != "PhysicsBSP")
+            if (meshFilter.transform.gameObject.name != "PhysicsBSP")
             {
-                t.gameObject.MeshCombine(true);
+                meshFilter.gameObject.MeshCombine(true);
             }
         }
 
         var gPhysicsBSP = GameObject.Find("PhysicsBSP");
         gPhysicsBSP.MeshCombine(true);
 
-        // After mesh combine, we need to recalculate the normals
-        MeshFilter[] meshFilters = gPhysicsBSP.GetComponentsInChildren<MeshFilter>();
+        //After mesh combine, we need to recalculate the normals
+        meshFilters = gPhysicsBSP.GetComponentsInChildren<MeshFilter>();
         foreach (MeshFilter mf in meshFilters)
         {
             //mf.mesh.Optimize();
@@ -532,14 +600,18 @@ public class DataExtractor : EditorWindow
         return combinedMesh;
     }
 
-    private static void AddColliders(GameObject levelGameObject)
+    private static void AddColliders(GameObject rootObject)
     {
         // Assign the mesh collider to the combined meshes
-
-        foreach (var t in levelGameObject.GetComponentsInChildren<MeshFilter>())
+        foreach (var meshFilter in rootObject.GetComponentsInChildren<MeshFilter>())
         {
-            var mc = t.transform.gameObject.AddComponent<MeshCollider>();
-            mc.sharedMesh = t.mesh;
+            if (meshFilter.gameObject == rootObject)
+            {
+                continue;
+            }
+
+            var meshCollider = meshFilter.transform.gameObject.AddComponent<MeshCollider>();
+            meshCollider.sharedMesh = meshFilter.sharedMesh;
         }
     }
 
@@ -680,4 +752,542 @@ public class DataExtractor : EditorWindow
 
         EditorUtility.ClearProgressBar();
     }
+
+    private static bool IsVolume(BSPModel bspModel)
+    {
+        if (bspModel.WorldName.Contains("terrain", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return (
+            bspModel.TextureNames[0].Contains("AI.dtx", StringComparison.OrdinalIgnoreCase) ||
+            bspModel.TextureNames[0].Contains("sound.dtx", StringComparison.OrdinalIgnoreCase) ||
+            bspModel.WorldName.Contains("volume", StringComparison.OrdinalIgnoreCase) ||
+            bspModel.WorldName.Contains("water", StringComparison.OrdinalIgnoreCase) ||
+            bspModel.WorldName.Contains("weather", StringComparison.OrdinalIgnoreCase) ||
+            bspModel.WorldName.Contains("rain", StringComparison.OrdinalIgnoreCase) ||
+            bspModel.WorldName.Contains("poison", StringComparison.OrdinalIgnoreCase) ||
+            bspModel.WorldName.Contains("corrosive", StringComparison.OrdinalIgnoreCase) ||
+            bspModel.WorldName.Contains("ladder", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static void SetTag(GameObject bspObject, BSPModel bspModel)
+    {
+        if (bspModel.WorldName == "PhysicsBSP")
+        {
+            bspObject.tag = LithtechTags.PhysicsBSP;
+        }
+        else if (IsVolume(bspModel))
+        {
+            bspObject.tag = LithtechTags.Volumes;
+        }
+        else if (bspModel.WorldName.Contains("AITrk", StringComparison.OrdinalIgnoreCase))
+        {
+            bspObject.tag = LithtechTags.AITrack;
+        }
+        else if (bspModel.WorldName.Contains("AIBarrier", StringComparison.OrdinalIgnoreCase))
+        {
+            bspObject.tag = LithtechTags.AIBarrier;
+        }
+        else if (bspObject.GetComponent<MeshFilter>() == null)
+        {
+            bspObject.tag = LithtechTags.MiscInvisible;
+        }
+    }
+
+    private static bool IsTextureInvisible(string textureName, bool includeGlobaOpsNames, bool isSky, bool isInvisible)
+    {
+        if (isInvisible)
+        {
+            return true;
+        }
+
+        if (isSky)
+        {
+            return true;
+        }
+
+        if (string.IsNullOrEmpty(textureName))
+        {
+            return true;
+        }
+
+        if (textureName.Contains("invisible", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (textureName.Contains("Invisible.dtx", StringComparison.OrdinalIgnoreCase)
+               || textureName.Contains("Sky.dtx", StringComparison.OrdinalIgnoreCase)
+               || textureName.Contains("Rain.dtx", StringComparison.OrdinalIgnoreCase)
+               || textureName.Contains("hull.dtx", StringComparison.OrdinalIgnoreCase)
+               || textureName.Contains("occluder.dtx", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (includeGlobaOpsNames)
+        {
+            if (textureName.Contains("sector.dtx", StringComparison.OrdinalIgnoreCase)
+               || textureName.Contains("Sound_Environment.dtx", StringComparison.OrdinalIgnoreCase)
+               || textureName.Contains("Useable.dtx", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static WorldSurfaceModel GetSurface(BSPModel bspModel, WorldPolyModel poly, string datName, int polyIndex)
+    {
+        if (bspModel.TextureNames == null || bspModel.TextureNames.Count == 0)
+        {
+            Debug.Log($"Error creating BSP for DAT {datName}, BSP WorldName {bspModel.WorldName}. No textures found on poly {polyIndex}");
+            return null;
+        }
+
+        if (poly.SurfaceIndex > bspModel.Surfaces.Count - 1)
+        {
+            Debug.Log($"Error creating BSP for DAT {datName}, BSP WorldName {bspModel.WorldName}. Invalid surface index on poly {polyIndex}");
+            return null;
+        }
+
+        var surface = bspModel.Surfaces[poly.SurfaceIndex];
+        if (surface == null)
+        {
+            Debug.Log($"Error creating BSP for DAT {datName}, BSP WorldName {bspModel.WorldName}. Could not find surface index on poly {polyIndex}");
+            return null;
+        }
+
+        if (surface.TextureIndex > bspModel.TextureNames.Count - 1)
+        {
+            Debug.Log($"Error creating BSP for DAT {datName}, BSP WorldName {bspModel.WorldName}. Invalid texture index on poly {polyIndex}");
+            return null;
+        }
+
+        if (string.IsNullOrEmpty(bspModel.TextureNames[surface.TextureIndex]))
+        {
+            Debug.Log($"Error creating BSP for DAT {datName}, BSP WorldName {bspModel.WorldName}. Texture name missing or invalid on poly {polyIndex}");
+            return null;
+        }
+
+        return surface;
+    }
+
+    private static void CreateChildMeshes(WorldPolyModel poly, BSPModel bspModel, int index, Material material, WorldSurfaceModel surface, Transform parentTransform, TextureSize textureSize)
+    {
+        // Convert OPQ to UV magic
+        Vector3 center = poly.Center;
+        Vector3 o = surface.UV1;
+        Vector3 p = surface.UV2;
+        Vector3 q = surface.UV3;
+
+        o *= UnityScaleFactor;
+        o -= (Vector3)poly.Center;
+        p /= UnityScaleFactor;
+        q /= UnityScaleFactor;
+
+        // CALCULATE EACH TRI INDIVIDUALLY.
+        for (int nTriIndex = 0; nTriIndex < poly.LoVerts - 2; nTriIndex++)
+        {
+            Vector3[] vertexList = new Vector3[poly.LoVerts];
+            Vector3[] vertexNormalList = new Vector3[poly.LoVerts];
+            Color[] vertexColorList = new Color[poly.LoVerts];
+            Vector2[] uvList = new Vector2[poly.LoVerts];
+            int[] triangleIndices = new int[3];
+
+            GameObject bspChildObject = new GameObject(bspModel.WorldName + index);
+            bspChildObject.isStatic = true;
+            bspChildObject.transform.parent = parentTransform;
+            MeshRenderer meshRenderer = bspChildObject.AddComponent<MeshRenderer>();
+            MeshFilter meshFilter = bspChildObject.AddComponent<MeshFilter>();
+
+            Mesh mesh = new Mesh();
+            for (int vertIndex = 0; vertIndex < poly.LoVerts; vertIndex++)
+            {
+                var vertex = bspModel.Vertices[(int)poly.VertexColorList[vertIndex].nVerts];
+
+                Vector3 vertexData = vertex;
+                vertexData *= UnityScaleFactor;
+                vertexList[vertIndex] = vertexData;
+
+                Color color = new Color(
+                    poly.VertexColorList[vertIndex].red / 255,
+                    poly.VertexColorList[vertIndex].green / 255,
+                    poly.VertexColorList[vertIndex].blue / 255,
+                    1.0f);
+                vertexColorList[vertIndex] = color;
+                vertexNormalList[vertIndex] = bspModel.Planes[poly.PlaneIndex].m_vNormal;
+
+                // Calculate UV coordinates based on the OPQ vectors
+                // Note that since the worlds are offset from 0,0,0 sometimes we need to subtract the center point
+                Vector3 curVert = vertexList[vertIndex];
+                float u = Vector3.Dot((curVert - center) - o, p);
+                float v = Vector3.Dot((curVert - center) - o, q);
+
+                //Scale back down into something more sane
+                u /= textureSize.EngineWidth;
+                v /= textureSize.EngineHeight;
+
+                uvList[vertIndex] = new Vector2(u, v);
+            }
+
+            mesh.SetVertices(vertexList);
+            mesh.SetNormals(vertexNormalList);
+            mesh.SetUVs(0, uvList);
+            mesh.SetColors(vertexColorList);
+
+            // Hacky, whatever
+            triangleIndices[0] = 0;
+            triangleIndices[1] = nTriIndex + 1;
+            triangleIndices[2] = (nTriIndex + 2) % poly.LoVerts;
+
+            // Set triangles
+            mesh.SetTriangles(triangleIndices, 0);
+            mesh.RecalculateTangents();
+
+            meshRenderer.sharedMaterial = material;
+            meshFilter.sharedMesh = mesh;
+
+            meshRenderer.shadowCastingMode = ShadowCastingMode.TwoSided;
+        }
+    }
+
+    private static void CreateBSPChildMeshes(BSPModel bspModel, GameObject bspObject, List<PNGMap> pngMaps, List<UnityDTX> unityDTXModels)
+    {
+        if (bspModel.Surfaces == null || bspModel.Surfaces.Count == 0)
+        {
+            Debug.Log($"Error creating BSP for DAT {bspObject.name}, BSP WorldName {bspModel.WorldName}. No surfaces found.");
+            return;
+        }
+
+        int polyIndex = -1;
+        foreach (WorldPolyModel poly in bspModel.Polies)
+        {
+            polyIndex++;
+            var surface = GetSurface(bspModel, poly, bspObject.name, polyIndex);
+            if (surface == null)
+            {
+                continue;
+            }
+
+            var textureName = bspModel.TextureNames[surface.TextureIndex];
+            bool isSky = (surface.Flags & (int)BitMask.SKY) == (int)BitMask.SKY;
+            bool isTranslucent = (surface.Flags & (int)BitMask.TRANSLUCENT) == (int)BitMask.TRANSLUCENT;
+            bool isInvisible = (surface.Flags & (int)BitMask.INVISIBLE) == (int)BitMask.INVISIBLE;
+
+            if (IsTextureInvisible(textureName, false, isSky, isInvisible))
+            {
+                continue;
+            }
+
+            var pngMap = pngMaps.FirstOrDefault(x => x.LookupPath.Equals(textureName, StringComparison.OrdinalIgnoreCase));
+            if (pngMap == null)
+            {
+                Debug.LogError("How did this happen???");
+                continue;
+            }
+
+            Material material = pngMap.Material;
+            TextureSize textureSize = GetTextureSize(textureName, unityDTXModels, material);
+
+            // TODO: Create optional material with Chroma?
+            // Check if the material needs to add the Chroma flag - which requires (possibly) creating a new Material based on the original texture.
+            // May also update the tag of the mainObject
+            // material = AddAndGetChromaMaterialIfNeeded(matReference, bspModel.WorldName, isTranslucent, isInvisible, mainObject);
+
+            CreateChildMeshes(poly, bspModel, polyIndex, material, surface, bspObject.transform, textureSize);
+        }
+    }
+
+    private static TextureSize GetTextureSize(string textureName, List<UnityDTX> unityDTXModels, Material material)
+    {
+        TextureSize textureSize = null;
+        var unityDTXModel = unityDTXModels.FirstOrDefault(x => x.DTXModel.RelativePathToDTX.Equals(textureName, StringComparison.OrdinalIgnoreCase));
+        if (unityDTXModel != null)
+        {
+            textureSize = unityDTXModel.TextureSize;
+        }
+
+        if (textureSize == null)
+        {
+            textureSize = new TextureSize
+            {
+                Width = material.mainTexture.width,
+                Height = material.mainTexture.height,
+                EngineWidth = material.mainTexture.width,
+                EngineHeight = material.mainTexture.height
+            };
+        }
+
+        return textureSize;
+    }
+
+    private static List<PNGMap> CreateMaterialsAndGetPNGMaps(List<DATModel> datModels, List<SPRModel> sprModels)
+    {
+        var uniqueTextures = datModels.SelectMany(datModel => datModel.BSPModels.SelectMany(bspModel => bspModel.TextureNames))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        List<PNGMap> pngMaps = new List<PNGMap>();
+        foreach (var datTexturePath in uniqueTextures)
+        {
+            string realPathToPNG = GetRealPathToPNG(datTexturePath, sprModels);
+
+            Material material = realPathToPNG == null
+                ? DefaultMaterial
+                : CreateBSPMaterial(datTexturePath, realPathToPNG);
+
+            pngMaps.Add(new PNGMap
+            {
+                LookupPath = datTexturePath,
+                RealPathToPNG = realPathToPNG,
+                Material = material
+            });
+        }
+
+        return pngMaps;
+    }
+
+    private static Material CreateBSPMaterial(string datTexturePath, string realPathToPNG)
+    {
+        string datTexturePathOnly = Path.GetDirectoryName(datTexturePath);
+        string materialPathOnly = Path.Combine(BSPMaterialPath, datTexturePathOnly).ConvertFolderSeperators();
+        string textureNameOnly = Path.GetFileNameWithoutExtension(datTexturePath);
+        string pathToMaterial = Path.Combine(materialPathOnly, textureNameOnly + ".mat");
+        Directory.CreateDirectory(Path.GetDirectoryName(pathToMaterial));
+
+        // TODO Find matching DTX to get "Full Bright" from the header?
+        //var unityDTX = unityDTXModels.FirstOrDefault(x => x.RelativePathToDTX != null && x.RelativePathToDTX.Equals(relativePath, StringComparison.OrdinalIgnoreCase));
+        bool useFullBright = false; // unityDTX == null ? false : unityDTX.Header.UseFullBright;
+
+        // TODO Check how we might know about Chroma Key
+        bool useChromaKey = false;
+
+        Texture2D texture2d = AssetDatabase.LoadAssetAtPath<Texture2D>(realPathToPNG);
+
+        // TODO: Check if there's a material named "skinName" in the directory first. If so, add a number until you get unique.
+        var material = DTXConverter.CreateDefaultMaterial(textureNameOnly, texture2d, useFullBright, useChromaKey);
+
+        AssetDatabase.CreateAsset(material, pathToMaterial);
+
+        return material;
+    }
+
+    private static string GetRealPathToPNG(string datTexturePath, List<SPRModel> sprModels)
+    {
+        string realPathToPNG = null;
+        string extension = Path.GetExtension(datTexturePath).ToLower();
+        if (extension == ".dtx")
+        {
+            realPathToPNG = Path.ChangeExtension(Path.Combine(TexturePath, datTexturePath), "png");
+            if (!File.Exists(realPathToPNG))
+            {
+                realPathToPNG = null;
+            }
+        }
+        else if (extension == ".spr")
+        {
+            var matchingSprite = sprModels.FirstOrDefault(
+                x => x.RelativePathToSprite.Equals(datTexturePath, StringComparison.OrdinalIgnoreCase));
+            if (matchingSprite == null || matchingSprite.DTXPaths == null || matchingSprite.DTXPaths.Length == 0)
+            {
+                realPathToPNG = null;
+            }
+            else
+            {
+                realPathToPNG = Path.ChangeExtension(Path.Combine(TexturePath, matchingSprite.DTXPaths[0]), "png");
+                if (!File.Exists(realPathToPNG))
+                {
+                    realPathToPNG = null;
+                }
+            }
+        }
+
+        return realPathToPNG;
+    }
+
+    private static void CreateBSPMeshAndPrefab(string name, GameObject go)
+    {
+        // Save mesh
+        var meshFilter = go.GetComponent<MeshFilter>();
+        var mesh = meshFilter.sharedMesh;
+        string meshPathAndFilename = Path.Combine(BSPMeshPath, name + ".asset");
+        AssetDatabase.CreateAsset(mesh, meshPathAndFilename);
+
+        // Save prefab
+        string prefabPathAndFilename = Path.Combine(BSPPrefabPath, name + ".prefab");
+        var prefab = PrefabUtility.SaveAsPrefabAsset(go, prefabPathAndFilename);
+    }
+
+    private static void CombineMeshesPreserveMaterials(string datName, GameObject parent)
+    {
+        var meshFilters = parent.GetComponentsInChildren<MeshFilter>(includeInactive: true);
+
+        // Group by material
+        Dictionary<Material, List<CombineInstance>> materialToCombine = new();
+
+        foreach (var meshFilter in meshFilters)
+        {
+            if (meshFilter.sharedMesh == null || meshFilter.gameObject == parent)
+            {
+                continue;
+            }
+
+            var renderer = meshFilter.GetComponent<MeshRenderer>();
+            if (renderer == null || renderer.sharedMaterials.Length != 1)
+            {
+                Debug.LogWarning($"Skipping {meshFilter.name} — requires exactly one material.");
+                continue;
+            }
+
+            Material mat = renderer.sharedMaterial;
+
+            if (!materialToCombine.ContainsKey(mat))
+            {
+                materialToCombine[mat] = new List<CombineInstance>();
+            }
+
+            CombineInstance combineInstance = new CombineInstance
+            {
+                mesh = meshFilter.sharedMesh,
+                transform = meshFilter.transform.localToWorldMatrix
+            };
+
+            materialToCombine[mat].Add(combineInstance);
+
+            DestroyImmediate(meshFilter.gameObject);
+        }
+
+        // Combine all groups into a single mesh with multiple submeshes
+        List<CombineInstance> finalCombine = new();
+        List<Material> finalMaterials = new();
+
+        foreach (var kvp in materialToCombine)
+        {
+            Mesh subMesh = new Mesh();
+            subMesh.CombineMeshes(kvp.Value.ToArray(), true, true);
+
+            CombineInstance ci = new CombineInstance
+            {
+                mesh = subMesh,
+                transform = Matrix4x4.identity
+            };
+
+            finalCombine.Add(ci);
+            finalMaterials.Add(kvp.Key);
+        }
+
+        Mesh finalMesh = new Mesh();
+        finalMesh.name = $"{datName}-{parent.name}";
+        finalMesh.CombineMeshes(finalCombine.ToArray(), false, false);
+
+        var parentMeshFilter = parent.GetComponent<MeshFilter>();
+        var parentMeshRenderer = parent.GetComponent<MeshRenderer>();
+        if (finalMesh.subMeshCount == 0)
+        {
+            if (parentMeshFilter != null)
+            {
+                DestroyImmediate(parentMeshFilter);
+            }
+
+            if (parentMeshRenderer != null)
+            {
+                DestroyImmediate(parentMeshRenderer);
+            }
+        }
+        else
+        {
+            parentMeshFilter ??= parent.AddComponent<MeshFilter>();
+            parentMeshRenderer ??= parent.AddComponent<MeshRenderer>();
+
+            // Apply to parent
+            parentMeshFilter.sharedMesh = finalMesh;
+            parentMeshRenderer.sharedMaterials = finalMaterials.ToArray();
+        }
+    }
+
+    private static GameObject CreateBSPObject(string name, BSPModel bspModel, List<PNGMap> pngMaps, List<UnityDTX> unityDTXModels)
+    {
+        var bspObject = new GameObject(bspModel.WorldName);
+        bspObject.isStatic = true;
+        bspObject.AddComponent<MeshFilter>();
+        bspObject.AddComponent<MeshRenderer>().sharedMaterial = DefaultMaterial;
+
+        CreateBSPChildMeshes(bspModel, bspObject, pngMaps, unityDTXModels);
+        CombineMeshesPreserveMaterials(name, bspObject);
+        SetTag(bspObject, bspModel);
+
+        return bspObject;
+    }
+
+    private static List<GameObject> CreateBSPObjects(GameObject parent, string name, DATModel datModel, List<PNGMap> pngMaps, List<UnityDTX> unityDTXModels)
+    {
+        int i = 0;
+        var bspObjects = new List<GameObject>();
+        foreach (var bspModel in datModel.BSPModels)
+        {
+            i++;
+            float progress = (float)i / datModel.BSPModels.Count;
+            EditorUtility.DisplayProgressBar($"Creating BSP objects for {name}", $"Item {i} of {datModel.BSPModels.Count}", progress);
+
+            if (bspModel.WorldName.Contains("VisBSP", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            GameObject bspObject = CreateBSPObject(name, bspModel, pngMaps, unityDTXModels);
+            bspObjects.Add(bspObject);
+        }
+
+        EditorUtility.DisplayProgressBar($"Grouping final BSP objects for {name}", $"Item {i} of {datModel.BSPModels.Count}", 99.9f);
+
+        var taggedObjects = bspObjects.GroupBy(x => x.tag);
+        foreach (var taggedObject in taggedObjects)
+        {
+            GameObject tagObject = new GameObject(taggedObject.Key ?? "Untagged");
+            tagObject.transform.parent = parent.transform;
+
+            foreach (GameObject obj in taggedObject)
+            {
+                obj.transform.parent = tagObject.transform;
+            }
+        }
+
+        AddColliders(parent);
+
+        EditorUtility.ClearProgressBar();
+
+        return bspObjects;
+    }
+
+    /// <summary>
+    /// Create assets related to DAT models
+    /// </summary>
+    /// <param name="abcModels"></param>
+    /// <param name="sprModels"></param>
+    /// <param name="datModels"></param>
+    /// <param name="unityDTXModels"></param>
+    private static void CreateAssetsFromDATModels(List<ABCModel> abcModels, List<SPRModel> sprModels, List<DATModel> datModels, List<UnityDTX> unityDTXModels)
+    {
+        datModels = datModels.Where(x => x.Filename.Contains("RESCUEATTHERUINS") && !x.Filename.Contains("Copy")).ToList();
+
+        List<PNGMap> pngMaps = CreateMaterialsAndGetPNGMaps(datModels, sprModels);
+
+        foreach (var datModel in datModels)
+        {
+            string name = Path.GetFileNameWithoutExtension(datModel.Filename);
+            Debug.Log($"Creating {name} from {datModel.Filename}");
+            GameObject rootObject = new GameObject(name);
+            var bspObjects = CreateBSPObjects(rootObject, name, datModel, pngMaps, unityDTXModels);
+            
+
+            // CreateBSPMeshAndPrefab(rootObject.name, rootObject);
+
+            //DestroyImmediate(rootObject);
+        }
+    }
+
 }

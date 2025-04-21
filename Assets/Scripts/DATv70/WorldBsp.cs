@@ -28,7 +28,7 @@ public class WorldBsp
     public LTVector m_vWorldTranslation;
     public int m_nNamesLen;
     public int m_nTextures;
-    public List<String> m_aszTextureNames { get; set; } = new List<String>();
+    public List<String> TextureNames { get; set; } = new List<String>();
     public List<WorldPoly> m_pPolies = new List<WorldPoly>();
     public List<WorldPlane> m_pPlanes = new List<WorldPlane>();
     public List<WorldSurface> m_pSurfaces = new List<WorldSurface>();
@@ -197,7 +197,7 @@ public class WorldBsp
             ReadTextures(ref b);
 
             // TTTT Fake one extra texture:
-            m_aszTextureNames.Add(BrightGreenTexture); //add it to the list!
+            TextureNames.Add(BrightGreenTexture); //add it to the list!
 
             //check if m_nVerts is larger than max short
             if (m_nVerts > sizeof(Int16))
@@ -252,7 +252,7 @@ public class WorldBsp
                 Array.Resize(ref tempString, tempString.Length + 1);
             }
             Array.Resize(ref tempString, tempString.Length - 1); // get rid of the 0x0
-            m_aszTextureNames.Add(System.Text.Encoding.ASCII.GetString(tempString)); //add it to the list!
+            TextureNames.Add(System.Text.Encoding.ASCII.GetString(tempString)); //add it to the list!
             b.BaseStream.Position++;
         }
 

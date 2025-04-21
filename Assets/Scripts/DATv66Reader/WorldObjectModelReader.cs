@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using UnityEngine;
 using static LithFAQ.LTTypes;
 using static LithFAQ.LTUtils;
@@ -39,6 +40,11 @@ namespace LithFAQ
                     if (theObject.options.ContainsKey(szPropertyName))
                     {
                         theObject.options.Remove(szPropertyName);
+                        var prop = theObject.Properties.FirstOrDefault(x => x.Name.Equals(szPropertyName, System.StringComparison.OrdinalIgnoreCase));
+                        if (prop != null)
+                        {
+                            theObject.Properties.Remove(prop);
+                        }
                     }
 
                     PropType propType = (PropType)binaryReader.ReadByte();
@@ -50,8 +56,11 @@ namespace LithFAQ
                         case PropType.PT_STRING:
                             theObject.objectEntryStringDataLength.Add(binaryReader.ReadInt16()); //read the string length plus the data length
                             nObjectPropertyDataLength = binaryReader.ReadInt16();
+
                             //Read the string
-                            theObject.options.Add(szPropertyName, ReadString(nObjectPropertyDataLength, ref binaryReader));
+                            string stringVal = ReadString(nObjectPropertyDataLength, ref binaryReader);
+                            theObject.options.Add(szPropertyName, stringVal);
+                            theObject.AddProperty(propType, szPropertyName, stringVal);
                             break;
 
                         case PropType.PT_VECTOR:
@@ -60,6 +69,7 @@ namespace LithFAQ
                             LTVector tempVec = ReadLTVector(ref binaryReader);
                             //Add our object to the Dictionary
                             theObject.options.Add(szPropertyName, tempVec);
+                            theObject.AddProperty(propType, szPropertyName, tempVec);
                             break;
 
                         case PropType.PT_ROTATION:
@@ -69,22 +79,31 @@ namespace LithFAQ
                             LTRotation tempRot = ReadLTRotation(ref binaryReader);
                             //Add our object to the Dictionary
                             theObject.options.Add(szPropertyName, tempRot);
+                            theObject.AddProperty(propType, szPropertyName, tempRot);
                             break;
                         case PropType.PT_UINT:
                             // Read the "size" of what we should read.
                             // For UINT the nObjectPropertyDataLength should always be 4.
                             nObjectPropertyDataLength = binaryReader.ReadInt16();
+
                             //Add our object to the Dictionary
-                            theObject.options.Add(szPropertyName, binaryReader.ReadUInt32());
+                            uint uIntVal = binaryReader.ReadUInt32();
+                            theObject.options.Add(szPropertyName, uIntVal);
+                            theObject.AddProperty(propType, szPropertyName, uIntVal);
                             break;
                         case PropType.PT_BOOL:
                             nObjectPropertyDataLength = binaryReader.ReadInt16();
-                            theObject.options.Add(szPropertyName, ReadBool(ref binaryReader));
+                            bool boolVal = ReadBool(ref binaryReader);
+                            theObject.options.Add(szPropertyName, boolVal);
+                            theObject.AddProperty(propType, szPropertyName, boolVal);
                             break;
                         case PropType.PT_REAL:
                             nObjectPropertyDataLength = binaryReader.ReadInt16();
+
                             //Add our object to the Dictionary
-                            theObject.options.Add(szPropertyName, ReadReal(ref binaryReader));
+                            var floatVal = ReadReal(ref binaryReader);
+                            theObject.options.Add(szPropertyName, floatVal);
+                            theObject.AddProperty(propType, szPropertyName, floatVal);
                             break;
                         case PropType.PT_COLOR:
                             nObjectPropertyDataLength = binaryReader.ReadInt16();
@@ -92,6 +111,7 @@ namespace LithFAQ
                             LTVector tempCol = ReadLTVector(ref binaryReader);
                             //Add our object to the Dictionary
                             theObject.options.Add(szPropertyName, tempCol);
+                            theObject.AddProperty(propType, szPropertyName, tempCol);
                             break;
                         default:
                             Debug.LogError("Unknown prop type: " + propType);

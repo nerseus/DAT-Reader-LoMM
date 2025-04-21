@@ -7,7 +7,7 @@ namespace Utility
 {
     public static class MaterialSafeMeshCombine
     {
-        public static MeshFilter MeshCombine(this GameObject gameObject, bool destroyObjects = false, params GameObject[] ignore)
+        public static MeshFilter MeshCombine(this GameObject gameObject, bool destroyObjects = false)
         {
             Vector3 originalPosition = gameObject.transform.position;
             Quaternion originalRotation = gameObject.transform.rotation;
@@ -18,10 +18,15 @@ namespace Utility
 
             List<Material> materials = new List<Material>();
             List<List<CombineInstance>> combineInstanceLists = new List<List<CombineInstance>>();
-            MeshFilter[] meshFilters = gameObject.GetComponentsInChildren<MeshFilter>().Where(m => !ignore.Contains(m.gameObject) && !ignore.Any(i => m.transform.IsChildOf(i.transform))).ToArray();
+            MeshFilter[] meshFilters = gameObject.GetComponentsInChildren<MeshFilter>();
 
             foreach (MeshFilter meshFilter in meshFilters)
             {
+                if (meshFilter.transform == gameObject.transform)
+                {
+                    continue;
+                }
+
                 MeshRenderer meshRenderer = meshFilter.GetComponent<MeshRenderer>();
 
                 if (!meshRenderer ||

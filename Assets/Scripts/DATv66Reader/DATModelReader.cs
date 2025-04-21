@@ -56,6 +56,7 @@ namespace LithFAQ
             }
 
             var datModel = new DATModel(version);
+            datModel.Filename = datFilename;
             datModel.WorldModel = WorldModelReader.ReadWorldModel(binaryReader, datModel.Version);
             WorldTreeReader.SkipWorldTree(binaryReader);
 

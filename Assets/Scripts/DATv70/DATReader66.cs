@@ -151,8 +151,8 @@ namespace LithFAQ
 
         private bool IsVolume(WorldBsp tBSP)
         {
-            return (tBSP.m_aszTextureNames[0].Contains("AI.dtx", StringComparison.OrdinalIgnoreCase) ||
-                tBSP.m_aszTextureNames[0].Contains("sound.dtx", StringComparison.OrdinalIgnoreCase) ||
+            return (tBSP.TextureNames[0].Contains("AI.dtx", StringComparison.OrdinalIgnoreCase) ||
+                tBSP.TextureNames[0].Contains("sound.dtx", StringComparison.OrdinalIgnoreCase) ||
                 tBSP.m_szWorldName.Contains("volume", StringComparison.OrdinalIgnoreCase) ||
                 tBSP.m_szWorldName.Contains("Wwater") ||
                 tBSP.m_szWorldName.Contains("weather", StringComparison.OrdinalIgnoreCase) ||
@@ -372,7 +372,7 @@ namespace LithFAQ
             foreach (WorldPoly tPoly in tBSP.m_pPolies)
             {
                 // remove all bsp invisible
-                var textureName = tBSP.m_aszTextureNames[tPoly.GetSurface(tBSP).m_nTexture];
+                var textureName = tBSP.TextureNames[tPoly.GetSurface(tBSP).m_nTexture];
                 var surfaceFlags = tPoly.GetSurface(tBSP).m_nFlags;
                 bool isSky = (surfaceFlags & (int)BitMask.SKY) == (int)BitMask.SKY;
                 bool isTranslucent = (surfaceFlags & (int)BitMask.TRANSLUCENT) == (int)BitMask.TRANSLUCENT;
@@ -387,7 +387,7 @@ namespace LithFAQ
                 if (isInvisible)
                 {
                     // Set texture index to last in the array of texture names.
-                    tBSP.m_pSurfaces[tPoly.m_nSurface].m_nTexture = (short)(tBSP.m_aszTextureNames.Count - 1);
+                    tBSP.m_pSurfaces[tPoly.m_nSurface].m_nTexture = (short)(tBSP.TextureNames.Count - 1);
                 }
 
                 TextureSize textureSize = importer.dtxMaterialList.texSize[textureName];
@@ -559,7 +559,7 @@ namespace LithFAQ
         private void LoadTexturesForBSP(WorldBsp tBSP)
         {
             //Load texture
-            foreach (var tex in tBSP.m_aszTextureNames)
+            foreach (var tex in tBSP.TextureNames)
             {
                 DTX.LoadDTXIntoLibrary(tex, importer.dtxMaterialList, importer.szProjectPath);
             }
@@ -725,7 +725,6 @@ namespace LithFAQ
                     {
                         if (subItem.Key == "Visible")
                             bInvisible = (bool)subItem.Value;
-
                         else if (subItem.Key == "Chromakey")
                             bChromakey = (bool)subItem.Value;
                         else if (subItem.Key == "Name")

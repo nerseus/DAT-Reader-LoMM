@@ -227,7 +227,7 @@ namespace LithFAQ
                     mainObject.AddComponent<MeshFilter>();
                     mainObject.AddComponent<MeshRenderer>().material = importer.defaultMaterial;
 
-                    if (tBSP.m_aszTextureNames[0].Contains("AI.dtx", StringComparison.OrdinalIgnoreCase) ||
+                    if (tBSP.TextureNames[0].Contains("AI.dtx", StringComparison.OrdinalIgnoreCase) ||
                         tBSP.m_szWorldName.Contains("volume", StringComparison.OrdinalIgnoreCase) ||
                         tBSP.m_szWorldName.Contains("Wwater") ||
                         tBSP.m_szWorldName.Contains("weather", StringComparison.OrdinalIgnoreCase) ||
@@ -247,11 +247,11 @@ namespace LithFAQ
                     {
 
                         //remove all bsp invisible
-                        if (tBSP.m_aszTextureNames[tPoly.GetSurface(tBSP).m_nTexture].Contains("Invisible.dtx", StringComparison.OrdinalIgnoreCase) ||
-                            tBSP.m_aszTextureNames[tPoly.GetSurface(tBSP).m_nTexture].Contains("Sky.dtx", StringComparison.OrdinalIgnoreCase) ||
-                            tBSP.m_aszTextureNames[tPoly.GetSurface(tBSP).m_nTexture].Contains("Rain.dtx", StringComparison.OrdinalIgnoreCase) ||
-                            tBSP.m_aszTextureNames[tPoly.GetSurface(tBSP).m_nTexture].Contains("hull.dtx", StringComparison.OrdinalIgnoreCase) ||
-                            tBSP.m_aszTextureNames[tPoly.GetSurface(tBSP).m_nTexture].Contains("occluder.dtx", StringComparison.OrdinalIgnoreCase))
+                        if (tBSP.TextureNames[tPoly.GetSurface(tBSP).m_nTexture].Contains("Invisible.dtx", StringComparison.OrdinalIgnoreCase) ||
+                            tBSP.TextureNames[tPoly.GetSurface(tBSP).m_nTexture].Contains("Sky.dtx", StringComparison.OrdinalIgnoreCase) ||
+                            tBSP.TextureNames[tPoly.GetSurface(tBSP).m_nTexture].Contains("Rain.dtx", StringComparison.OrdinalIgnoreCase) ||
+                            tBSP.TextureNames[tPoly.GetSurface(tBSP).m_nTexture].Contains("hull.dtx", StringComparison.OrdinalIgnoreCase) ||
+                            tBSP.TextureNames[tPoly.GetSurface(tBSP).m_nTexture].Contains("occluder.dtx", StringComparison.OrdinalIgnoreCase))
                         {
                             continue;
                         }
@@ -259,7 +259,7 @@ namespace LithFAQ
                         float texWidth = 256f;
                         float texHeight = 256f;
 
-                        string szTextureName = Path.GetFileName(tBSP.m_aszTextureNames[tBSP.m_pSurfaces[tPoly.m_nSurface].m_nTexture]);
+                        string szTextureName = Path.GetFileName(tBSP.TextureNames[tBSP.m_pSurfaces[tPoly.m_nSurface].m_nTexture]);
 
                         //skip sky portals
                         if ((tPoly.GetSurface(tBSP).m_nFlags & (int)BitMask.SKY) == (int)BitMask.SKY)
@@ -496,7 +496,7 @@ namespace LithFAQ
         private void LoadTexturesForBSP(WorldBsp tBSP)
         {
             //Load texture
-            foreach (var tex in tBSP.m_aszTextureNames)
+            foreach (var tex in tBSP.TextureNames)
             {
                 DTX.LoadDTXIntoLibrary(importer.szProjectPath + "\\" + tex, importer.dtxMaterialList, importer.szProjectPath);
             }

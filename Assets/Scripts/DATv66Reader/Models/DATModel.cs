@@ -4,6 +4,7 @@ using System.Linq;
 
 public class DATModel
 {
+    public string Filename { get; set; }
     public int Version { get; set; }
     public WorldModel WorldModel { get; set; }
     public List<WorldObjectModel> WorldObjects { get; set; }
