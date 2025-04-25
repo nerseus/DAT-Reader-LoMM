@@ -32,7 +32,7 @@ public static class DTXReader
         }
 
         var model = new DTXModel();
-        model.RelativePathToDTX = relativePathToDTX;
+        model.RelativePathToDTX = relativePathToDTX.ConvertFolderSeperators();
 
         using var binaryReader = new BinaryReader(File.Open(fileNameAndPath, FileMode.Open));
         model.Header = ReadDTXHeader(binaryReader);

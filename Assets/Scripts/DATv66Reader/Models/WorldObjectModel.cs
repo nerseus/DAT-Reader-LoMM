@@ -2,8 +2,10 @@ using LithFAQ;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using UnityEngine;
 using static LithFAQ.LTTypes;
+using static UnityEngine.Rendering.DebugUI;
 
 public class WorldObjectModel
 {
@@ -34,8 +36,10 @@ public class WorldObjectModel
     private LTTypes.LTVector dims;
     private LTTypes.LTRotation rotation;
     private bool hasGravity;
+    private bool moveToFloor;
     private string weaponType;
     private float scale;
+    private float index;
     private string originalFilename;
     private string filename;
     private string filenameLowercase;
@@ -49,6 +53,7 @@ public class WorldObjectModel
     public LTTypes.LTVector Position { get { FlattenProperties(); return position; } }
     public LTTypes.LTRotation Rotation { get { FlattenProperties(); return rotation; } }
     public bool HasGravity { get { FlattenProperties(); return hasGravity; } }
+    public bool MoveToFloor { get { FlattenProperties(); return moveToFloor; } }
     public string WeaponType { get { FlattenProperties(); return weaponType; } }
     public float Scale { get { FlattenProperties(); return scale; } }
     public string OriginalFilename { get { FlattenProperties(); return originalFilename; } }
@@ -59,6 +64,7 @@ public class WorldObjectModel
     public string AllSkinsPathsLowercase { get { FlattenProperties(); return allSkinsPathsLowercase; } }
     public List<string> SkinsLowercase { get { FlattenProperties(); return skinsLowercase; } }
     public LTTypes.LTVector Dims { get { FlattenProperties(); return dims; } }
+    public float Index { get { FlattenProperties(); return index; } }
 
     private bool GetBoolValue(string propName)
     {
@@ -74,6 +80,16 @@ public class WorldObjectModel
             : default(float);
     }
 
+    private float GetUIntAsFloatValue(string propName)
+    {
+        uint tempVal = options.TryGetValue(propName, out var value) && value is uint uintVal
+        ? uintVal
+            : default(uint);
+
+        var bytes = BitConverter.GetBytes(tempVal);
+        return BitConverter.ToSingle(bytes, 0);
+    }
+    
     private string GetStringValue(string propName)
     {
         return options.TryGetValue(propName, out var value)
@@ -105,6 +121,7 @@ public class WorldObjectModel
         dims = GetVectorValue("Dims");
         rotation = GetRotationValue("Rotation");
         hasGravity = GetBoolValue("Gravity");
+        moveToFloor = GetBoolValue("MoveToFloor");
         weaponType = GetStringValue("WeaponType");
         scale = GetFloatValue("Scale");
         originalFilename = GetStringValue("Filename");
@@ -135,5 +152,7 @@ public class WorldObjectModel
         {
             isABC = Path.GetExtension(filename).ToLower() == ".abc";
         }
+
+        index = GetUIntAsFloatValue("Index");
     }
 }

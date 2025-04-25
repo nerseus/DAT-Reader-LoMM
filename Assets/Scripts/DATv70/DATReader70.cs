@@ -1249,7 +1249,7 @@ namespace LithFAQ
 
                     switch (propType)
                     {
-                        case PropType.PT_STRING:
+                        case PropType.String:
                             theObject.objectEntryFlag.Add(b.ReadInt32()); //read the flag
                             theObject.objectEntryStringDataLength.Add(b.ReadInt16()); //read the string length plus the data length
                             nObjectPropertyDataLength = b.ReadInt16();
@@ -1257,7 +1257,7 @@ namespace LithFAQ
                             tempData.Add(szPropertyName, ReadString(nObjectPropertyDataLength, ref b));
                             break;
 
-                        case PropType.PT_VECTOR:
+                        case PropType.Vector:
 
                             theObject.objectEntryFlag.Add(b.ReadInt32()); //read the flag
                             nObjectPropertyDataLength = b.ReadInt16();
@@ -1267,7 +1267,7 @@ namespace LithFAQ
                             tempData.Add(szPropertyName, tempVec);
                             break;
 
-                        case PropType.PT_ROTATION:
+                        case PropType.Rotation:
                             theObject.objectEntryFlag.Add(b.ReadInt32()); //read the flag
                                                                           //Get our data length
                             nObjectPropertyDataLength = b.ReadInt16();
@@ -1276,24 +1276,24 @@ namespace LithFAQ
                             //Add our object to the Dictionary
                             tempData.Add(szPropertyName, tempRot);
                             break;
-                        case PropType.PT_UINT:
+                        case PropType.UInt:
                             theObject.objectEntryFlag.Add(b.ReadInt32()); //read the flag
                             nObjectPropertyDataLength = b.ReadInt16();
                             //Add our object to the Dictionary
                             tempData.Add(szPropertyName, b.ReadUInt32());
                             break;
-                        case PropType.PT_BOOL:
+                        case PropType.Bool:
                             theObject.objectEntryFlag.Add(b.ReadInt32()); //read the flag
                             nObjectPropertyDataLength = b.ReadInt16();
                             tempData.Add(szPropertyName, ReadBool(ref b));
                             break;
-                        case PropType.PT_REAL:
+                        case PropType.Float:
                             theObject.objectEntryFlag.Add(b.ReadInt32()); //read the flag
                             nObjectPropertyDataLength = b.ReadInt16();
                             //Add our object to the Dictionary
                             tempData.Add(szPropertyName, ReadReal(ref b));
                             break;
-                        case PropType.PT_COLOR:
+                        case PropType.Color:
                             theObject.objectEntryFlag.Add(b.ReadInt32()); //read the flag
                             nObjectPropertyDataLength = b.ReadInt16();
                             //Get our float data

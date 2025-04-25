@@ -325,8 +325,8 @@ namespace LithFAQ
                 m.SetTriangles(_aTriangleIndices, 0);
                 m.RecalculateTangents();
 
-                mr.material = material;
-                mf.mesh = m;
+                mr.sharedMaterial = material;
+                mf.sharedMesh = m;
 
                 mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.TwoSided;
             }
@@ -337,6 +337,7 @@ namespace LithFAQ
             // Combine all meshes not named PhysicsBSP
             foreach (var t in levelGameObject.GetComponentsInChildren<MeshFilter>())
             {
+                if (t.gameObject == levelGameObject) continue;
                 if (t.transform.gameObject.name != "PhysicsBSP")
                 {
                     t.gameObject.MeshCombine(true);
@@ -363,7 +364,7 @@ namespace LithFAQ
             foreach (var t in levelGameObject.GetComponentsInChildren<MeshFilter>())
             {
                 var mc = t.transform.gameObject.AddComponent<MeshCollider>();
-                mc.sharedMesh = t.mesh;
+                mc.sharedMesh = t.sharedMesh;
             }
         }
 
@@ -864,7 +865,6 @@ namespace LithFAQ
                 }
                 else if (obj.objectName == "GameStartPoint")
                 {
-
                     int nCount = ModelDefinition.AVP2RandomCharacterGameStartPoint.Length;
 
                     int nRandom = UnityEngine.Random.Range(0, nCount);
@@ -1160,14 +1160,14 @@ namespace LithFAQ
 
                     switch (propType)
                     {
-                        case PropType.PT_STRING:
+                        case PropType.String:
                             theObject.objectEntryStringDataLength.Add(b.ReadInt16()); //read the string length plus the data length
                             nObjectPropertyDataLength = b.ReadInt16();
                             //Read the string
                             tempData.Add(szPropertyName, ReadString(nObjectPropertyDataLength, ref b));
                             break;
 
-                        case PropType.PT_VECTOR:
+                        case PropType.Vector:
                             nObjectPropertyDataLength = b.ReadInt16();
                             //Get our float data
                             LTVector tempVec = ReadLTVector(ref b);
@@ -1175,7 +1175,7 @@ namespace LithFAQ
                             tempData.Add(szPropertyName, tempVec);
                             break;
 
-                        case PropType.PT_ROTATION:
+                        case PropType.Rotation:
                             //Get our data length
                             nObjectPropertyDataLength = b.ReadInt16();
                             //Get our float data
@@ -1183,23 +1183,23 @@ namespace LithFAQ
                             //Add our object to the Dictionary
                             tempData.Add(szPropertyName, tempRot);
                             break;
-                        case PropType.PT_UINT:
+                        case PropType.UInt:
                             // Read the "size" of what we should read.
                             // For UINT the nObjectPropertyDataLength should always be 4.
                             nObjectPropertyDataLength = b.ReadInt16();
                             //Add our object to the Dictionary
                             tempData.Add(szPropertyName, b.ReadUInt32());
                             break;
-                        case PropType.PT_BOOL:
+                        case PropType.Bool:
                             nObjectPropertyDataLength = b.ReadInt16();
                             tempData.Add(szPropertyName, ReadBool(ref b));
                             break;
-                        case PropType.PT_REAL:
+                        case PropType.Float:
                             nObjectPropertyDataLength = b.ReadInt16();
                             //Add our object to the Dictionary
                             tempData.Add(szPropertyName, ReadReal(ref b));
                             break;
-                        case PropType.PT_COLOR:
+                        case PropType.Color:
                             nObjectPropertyDataLength = b.ReadInt16();
                             //Get our float data
                             LTVector tempCol = ReadLTVector(ref b);

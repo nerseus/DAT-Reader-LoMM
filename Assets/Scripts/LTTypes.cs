@@ -1,10 +1,4 @@
 using System;
-using Unity;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
 using UnityEngine;
 
 namespace LithFAQ
@@ -13,14 +7,14 @@ namespace LithFAQ
     {
         public enum PropType
         {
-            PT_STRING = 0,
-            PT_VECTOR = 1,
-            PT_COLOR = 2,
-            PT_REAL = 3,
-            PT_FLAGS = 4,
-            PT_BOOL = 5,
-            PT_UINT = 6,
-            PT_ROTATION = 7
+            String = 0,
+            Vector = 1,
+            Color = 2,
+            Float = 3,
+            Flags = 4,
+            Bool = 5,
+            UInt = 6,
+            Rotation = 7
         }
 
         public struct LTFloat : IEquatable<LTFloat>

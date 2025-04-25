@@ -22,4 +22,15 @@ public class ABCModel
         // The number of materials is the number of unique/distinct MaterialIndexes.
         return Pieces.Select(x => x.MaterialIndex).Distinct().Count();
     }
+
+    public ushort GetMaxMaterialIndex()
+    {
+        if (Pieces == null || Pieces.Count == 0)
+        {
+            return 0;
+        }
+
+        // The number of materials is the number of unique/distinct MaterialIndexes.
+        return Pieces.Max(x => x.MaterialIndex);
+    }
 }

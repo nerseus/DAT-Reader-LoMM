@@ -19,4 +19,34 @@ public class WorldObjectPropertyModel
     public bool BoolValue { get; set; }
 
     public Quaternion QuatValue { get; set; }
+
+    public string Value
+    {
+        get
+        {
+            switch (this.PropType)
+            {
+                case PropType.Float:
+                    return FloatValue.ToString();
+                case PropType.Flags:
+                    return UIntValue.ToString();
+                case PropType.Bool:
+                    return BoolValue.ToString();
+                case PropType.UInt:
+                    return UIntValue.ToString();
+                case PropType.Vector:
+                case PropType.Rotation:
+                    return $"{VectorValue.x},{VectorValue.y},{VectorValue.z}";
+                case PropType.Color:
+                    return $"{QuatValue.x},{QuatValue.y},{QuatValue.z},{QuatValue.w}";
+            }
+
+            return StringValue;
+        }
+    }
+
+    public override string ToString()
+    {
+        return $"{Name} ({this.PropType}) = {Value}";
+    }
 }

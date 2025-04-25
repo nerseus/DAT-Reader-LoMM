@@ -4,6 +4,7 @@ public static class SPRReader
 {
     public static SPRModel LoadSPRModel(string projectPath, string relativePathToSPR)
     {
+        relativePathToSPR = relativePathToSPR.ConvertFolderSeperators();
         string filenameWithFullPath = Path.Combine(projectPath, relativePathToSPR);
         if (!File.Exists(filenameWithFullPath))
         {
@@ -27,7 +28,7 @@ public static class SPRReader
             int strLength = binaryReader.ReadUInt16();
             byte[] strData = binaryReader.ReadBytes(strLength);
             string dtxPath = System.Text.Encoding.UTF8.GetString(strData);
-            unitySPR.DTXPaths[i] = dtxPath;
+            unitySPR.DTXPaths[i] = dtxPath.ConvertFolderSeperators();
         }
 
         binaryReader.Close();

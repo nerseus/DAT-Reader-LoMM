@@ -189,7 +189,7 @@ public static class ABCModelReader
         }
         catch (Exception ex)
         {
-            Debug.LogError($"Error while loading ABC file {filename}: {ex.Message}");
+            // Debug.LogError($"Error while loading ABC file {filename}: {ex.Message}");   
             return null;
         }
 

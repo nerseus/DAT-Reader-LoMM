@@ -6,4 +6,5 @@ public class UnityDTX
     public Material Material { get; set; }
     public Texture2D  Texture2D { get; set; }
     public TextureSize TextureSize { get; set; }
+    public bool UseTransparency { get;set; }
 }
