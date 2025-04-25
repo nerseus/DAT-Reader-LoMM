@@ -135,7 +135,7 @@ public class Importer : MonoBehaviour
             return;
         }
 
-        var model = ABCModelReader.LoadABCModel(this.szFileName, this.szProjectPath);
+        var model = ABCModelReader.ReadABCModel(this.szFileName, this.szProjectPath);
         if (model != null)
         {
             var matCount = model.GetMaterialCount();
@@ -772,7 +772,7 @@ public class Importer : MonoBehaviour
         var abcModels = new List<ABCModel>();
         foreach (var abcFile in abcFiles)
         {
-            var abcModel = ABCModelReader.LoadABCModel(abcFile, this.szProjectPath);
+            var abcModel = ABCModelReader.ReadABCModel(abcFile, this.szProjectPath);
             if (abcModel != null)
             {
                 abcModels.Add(abcModel);

@@ -229,7 +229,7 @@ public class DataExtractor : EditorWindow
             float progress = (float)i / abcFiles.Length;
             EditorUtility.DisplayProgressBar("Loading and processing ABC Models", $"Item {i} of {abcFiles.Length}", progress);
 
-            var abcModel = ABCModelReader.LoadABCModel(abcFile, ProjectFolder);
+            var abcModel = ABCModelReader.ReadABCModel(abcFile, ProjectFolder);
             if (abcModel != null)
             {
                 abcModels.Add(abcModel);
@@ -253,7 +253,7 @@ public class DataExtractor : EditorWindow
             EditorUtility.DisplayProgressBar("Loading and processing SPR files", $"Item {i} of {files.Length}", progress);
 
             var relativePath = Path.GetRelativePath(ProjectFolder, file);
-            SPRModel model = SPRReader.LoadSPRModel(ProjectFolder, relativePath);
+            SPRModel model = SPRModelReader.ReadSPRModel(ProjectFolder, relativePath);
             if (model != null)
             {
                 models.Add(model);
@@ -265,10 +265,10 @@ public class DataExtractor : EditorWindow
         return models;
     }
 
-    private static List<UnityDTX> GetAllUnityDTXModels()
+    private static List<UnityDTXModel> GetAllUnityDTXModels()
     {
         var files = Directory.GetFiles(ProjectFolder, "*.dtx", SearchOption.AllDirectories);
-        var models = new List<UnityDTX>();
+        var models = new List<UnityDTXModel>();
         int i = 0;
         foreach (var file in files)
         {
@@ -276,7 +276,7 @@ public class DataExtractor : EditorWindow
             float progress = (float)i / files.Length;
             EditorUtility.DisplayProgressBar("Loading and processing DTX Textures", $"Item {i} of {files.Length}", progress);
 
-            var dtxModel = DTXReader.LoadDTXModel(file, Path.GetRelativePath(ProjectFolder, file));
+            var dtxModel = DTXModelReader.ReadDTXModel(file, Path.GetRelativePath(ProjectFolder, file));
             if (dtxModel != null)
             {
                 var model = DTXConverter.ConvertDTX(dtxModel);
@@ -385,7 +385,7 @@ public class DataExtractor : EditorWindow
         EditorUtility.ClearProgressBar();
     }
 
-    private static Dictionary<string, MaterialLookupModel> CreateTextures(List<UnityDTX> unityDTXModels)
+    private static Dictionary<string, MaterialLookupModel> CreateTextures(List<UnityDTXModel> unityDTXModels)
     {
         Dictionary<string, MaterialLookupModel> materialLookups = new Dictionary<string, MaterialLookupModel>(StringComparer.OrdinalIgnoreCase);
 
@@ -522,7 +522,7 @@ public class DataExtractor : EditorWindow
         }
     }
 
-    private static Dictionary<string, MaterialLookupModel> CreateTexturesAndMaterials(List<UnityDTX> unityDTXModels, List<SPRModel> sprModels)
+    private static Dictionary<string, MaterialLookupModel> CreateTexturesAndMaterials(List<UnityDTXModel> unityDTXModels, List<SPRModel> sprModels)
     {
         Dictionary<string, MaterialLookupModel> materialLookups = CreateTextures(unityDTXModels);
 
@@ -535,7 +535,7 @@ public class DataExtractor : EditorWindow
         return materialLookups;
     }
 
-    private static MaterialLookupModel CreatePNG(UnityDTX unityDTXModel)
+    private static MaterialLookupModel CreatePNG(UnityDTXModel unityDTXModel)
     {
         try
         {
@@ -592,7 +592,7 @@ public class DataExtractor : EditorWindow
         return combinedMesh;
     }
 
-    private static Mesh CreateMesh(Piece piece, float yVertOffset)
+    private static Mesh CreateMesh(PieceModel piece, float yVertOffset)
     {
         List<Mesh> individualMeshes = new List<Mesh>();
 
@@ -600,7 +600,7 @@ public class DataExtractor : EditorWindow
 
         // only use the first LOD, we don't care about the rest.
         int faceIndex = 0;
-        foreach (Face face in faces)
+        foreach (FaceModel face in faces)
         {
             Mesh faceMesh = new Mesh();
             List<Vector3> faceVertices = new List<Vector3>();
@@ -608,7 +608,7 @@ public class DataExtractor : EditorWindow
             List<Vector2> faceUV = new List<Vector2>();
             List<int> faceTriangles = new List<int>();
 
-            foreach (FaceVertex faceVertex in face.Vertices)
+            foreach (FaceVertexModel faceVertex in face.Vertices)
             {
                 int originalVertexIndex = faceVertex.VertexIndex;
 
@@ -954,7 +954,7 @@ public class DataExtractor : EditorWindow
         return surface;
     }
 
-    private static void CreateChildMeshes(WorldPolyModel poly, BSPModel bspModel, int index, Material material, WorldSurfaceModel surface, Transform parentTransform, TextureSize textureSize)
+    private static void CreateChildMeshes(WorldPolyModel poly, BSPModel bspModel, int index, Material material, WorldSurfaceModel surface, Transform parentTransform, TextureSizeModel textureSize)
     {
         // Convert OPQ to UV magic
         Vector3 center = poly.Center;
@@ -1066,7 +1066,7 @@ public class DataExtractor : EditorWindow
             }
 
             Material material;
-            TextureSize textureSize;
+            TextureSizeModel textureSize;
             if (materialLookups.TryGetValue(textureName, out MaterialLookupModel materialLookup))
             {
                 // TODO: Create optional material with Chroma?
@@ -1079,7 +1079,7 @@ public class DataExtractor : EditorWindow
             else
             {
                 material = DefaultMaterial;
-                textureSize = new TextureSize
+                textureSize = new TextureSizeModel
                 {
                     Width = material.mainTexture.width,
                     EngineWidth = material.mainTexture.width,

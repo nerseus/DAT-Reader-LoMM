@@ -37,7 +37,7 @@ public static class DTX
         {
             // Should be a sprite.
             // Load the sprite and pull offthe first texture (index 0).
-            var unitySPR = SPRReader.LoadSPRModel(projectPath, relativePath);
+            var unitySPR = SPRModelReader.ReadSPRModel(projectPath, relativePath);
             if (unitySPR == null || unitySPR.DTXPaths == null || unitySPR.DTXPaths.Length == 0)
             {
                 return null;
@@ -74,7 +74,7 @@ public static class DTX
             return DTXReturn.FAILED;
         }
 
-        var dtxModel = DTXReader.LoadDTXModel(filenameAndFullPathToDTX, relativePath);
+        var dtxModel = DTXModelReader.ReadDTXModel(filenameAndFullPathToDTX, relativePath);
         if (dtxModel == null)
         {
             Debug.LogError("Exiting LoadDTXIntoLibrary with Failed - dtxModel is null");
@@ -140,7 +140,7 @@ public static class DTX
         }
     }
 
-    private static void AddTexSizeToDictionary(string filename, TextureSize texInfo, DTXMaterialLibrary dtxMaterial)
+    private static void AddTexSizeToDictionary(string filename, TextureSizeModel texInfo, DTXMaterialLibrary dtxMaterial)
     {
         if (!dtxMaterial.texSize.ContainsKey(filename))
         {

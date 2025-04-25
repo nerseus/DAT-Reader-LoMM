@@ -1,8 +1,13 @@
 using UnityEngine;
 
-public static class RendererArrayExtension
+public class DrawBounds : MonoBehaviour
 {
-    public static Bounds ComputeBounds(this Renderer[] renderers)
+    public Color color_sphere = new Color(0.0f, 0.0f, 0.0f, 0.5f);
+    public Color color_bounds = new Color(1.0f, 1.0f, 0.0f, 0.5f);
+    public bool Hierarchical = false;
+    public bool Disable = false;
+
+    private Bounds ComputeBounds(Renderer[] renderers)
     {
         Bounds bounds = new Bounds();
         for (int ir = 0; ir < renderers.Length; ir++)
@@ -15,14 +20,6 @@ public static class RendererArrayExtension
         }
         return bounds;
     }
-}
-
-public class DrawBounds : MonoBehaviour
-{
-    public Color color_sphere = new Color(0.0f, 0.0f, 0.0f, 0.5f);
-    public Color color_bounds = new Color(1.0f, 1.0f, 0.0f, 0.5f);
-    public bool Hierarchical = false;
-    public bool Disable = false;
 
     public void OnDrawGizmos()
     {
@@ -30,7 +27,7 @@ public class DrawBounds : MonoBehaviour
         if (Hierarchical)
         {
             Renderer[] r = gameObject.GetComponentsInChildren<Renderer>();
-            b = r.ComputeBounds();
+            b = ComputeBounds(r);
         }
         else
         {

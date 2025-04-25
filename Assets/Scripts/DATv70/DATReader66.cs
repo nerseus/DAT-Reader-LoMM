@@ -251,7 +251,7 @@ namespace LithFAQ
             return material;
         }
 
-        private void CreateChildMeshes(WorldPoly tPoly, WorldBsp tBSP, int id, Material material, Transform parentTransform, TextureSize textureSize)
+        private void CreateChildMeshes(WorldPoly tPoly, WorldBsp tBSP, int id, Material material, Transform parentTransform, TextureSizeModel textureSize)
         {
             // Convert OPQ to UV magic
             Vector3 center = tPoly.m_vCenter;
@@ -391,7 +391,7 @@ namespace LithFAQ
                     tBSP.m_pSurfaces[tPoly.m_nSurface].m_nTexture = (short)(tBSP.TextureNames.Count - 1);
                 }
 
-                TextureSize textureSize = importer.dtxMaterialList.texSize[textureName];
+                TextureSizeModel textureSize = importer.dtxMaterialList.texSize[textureName];
                 Material matReference = importer.dtxMaterialList.materials[textureName];
 
                 // Check if the material needs to add the Chroma flag - which requires (possibly) creating a new Material based on the original texture.
