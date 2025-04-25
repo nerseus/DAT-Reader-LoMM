@@ -1,0 +1,145 @@
+LOMM Converter Notes
+
+Notes:
+	Team Number = 0 evil, 1 = good, 3 = monsters
+
+	TranslucentWorldModel and ChromaKey
+		Probably not needed...
+			TranslucentWorldModel - used to create 2nd material with name suffix "_Chromakey"
+				if worldObjectModel.ObjectName == "TranslucentWorldModel" || obj.objectName == "Electricity" || obj.objectName == "Door"
+				ChromaKey
+					Defined on the "Litech Vertex Transparent" material
+					Use the Red value of the Color to indicate transparency: 255 is fully on, 128 is pretty much see through, 114 is "off"
+						Green and Blue seem to have no control over transparency
+					CAN work with FullBright
+
+TODO:
+	- Refactor:
+
+			
+	- Materials
+		When creating materials - need to lookup:
+			Find a BSPModel with a Textures[] reference to it
+			If there is one, find the matching WorldObject with the same name as BSPModel. For example, "BlueWater0"
+			From the WorldObject properties, look for SurfaceAlpha and use that value to set on the alpha transparency
+			Or rather... If SurfaceAlpha exists and < 1 then turn on alpha transparency (from alpha channel of texture).
+				COULD turn on alpha and use the "Color" of the material to set transparency - like SurfaceAlpha = 0.7 would set the Color.A = 255 * 0.7
+				But that's a uniform alpha blend instead of pulling from PNG
+	
+Ideas:
+	Prop research:
+		If Properties has "Solid" = false... ? No collision mesh?
+		
+	TODO:
+			
+	BSP with missing textures:
+		BSP with missing textures:
+			TEXTURES\LevelTextures\Architex\Floor\MarbleOctTileBrown.dtx
+			TEXTURES\LevelTextures\Architex\Wall\BricksGranite.dtx
+			TEXTURES\LevelTextures\Architex\Wall\GraniteBlockGreen.dtx
+	
+	TODO:
+		Transparent textures aren't showing as transparent
+		
+	TODO:
+		Sword in the stone
+			Church window should be 2-sided?
+		Sword in the stone
+			AIRails are not tagged?
+			Called AITrk
+			
+		Split Volume (ladder and water) up?
+		
+	TODO
+		Move map or player to start position
+		
+	TODO
+		Default AITrack and AIBarrier and Invisible tags to inactive?
+		
+		
+	On Wedding day - boxes called "PortalZoneX"
+		Shown with DefaultMaterial
+		Acting as portals to split up the BSP?
+		These are the ONLY items using DefaultMaterial.
+		
+		Spiders Den:
+			DefaultMaterial is only used on AIBarrier:
+			
+		
+		
+		
+
+
+Beginning of extract all. Using project path: C:\temp\LOMMConverted\OriginalUnrezzed\
+00:00.001 Create default material and create initial paths
+00:02.678 Loaded DTX models (count=1535)
+00:00.802 Loaded ABC models (count=579)
+00:00.038 Loaded SPR models (count=90)
+00:02.040 Loaded DAT models (count=20)
+00:24.756 Created all textures and materials (count=1613)
+00:13.986 Created all ABC models and prefabs (count=608)
+00:45.243 Created all DAT models and prefabs (count=20)
+01:29.548 Total Processing Time
+Done!!
+UnityEngine.Debug:Log (object)
+DataExtractor:ExtractAll () (at Assets/Editor/DataExtractor.cs:86)
+
+
+	TODO Skybox:
+		How to handle SkyBox?
+		
+
+	TODO Sounds:
+		Other items with sounds:
+			WorldObjectModel with ObjectType = WallTorch
+				Translucency = 1.000
+					This is the ONLY Translucency value
+				FireType = 
+					only FireType values are:
+						1073741824 <- 4000 0000
+						1065353216 <- 3F80 0000
+
+			
+	
+	Other ABC files to load as Props:
+		UrnGargoyle4 (DestructableProp) - CustomTexture=skins\props\urngargoyle.dtx
+		UrnGargoyle4 (DestructableProp) - CustomModel=models\props\debris\urndebris.abc
+			Other properties:
+				Name (PT_STRING) = UrnGargoyle4
+				Filename (PT_STRING) = MODELS\Props\UrnGargoyle.abc
+				Skin (PT_STRING) = Skins\Props\UrnGargoyle.dtx
+
+				CustomTexture (PT_STRING) = skins\props\urngargoyle.dtx
+				CustomSound (PT_STRING) = Sounds\Events\shatterpotterybig03.wav
+				CustomModel (PT_STRING) = models\props\debris\urndebris.abc
+				BounceSound (PT_STRING) = 
+
+		WorldObject36 (DestructableBrush) - CustomTexture=skins/props/beaker01.dtx
+		WorldObject36 (DestructableBrush) - CustomModel=models\props\debris\BeakerDebris.abc
+
+		DRAGONBLADE.DAT - WorldObjects with filename-looking strings
+			SwordInStone0 (SwordInStone) - DimsFile=models\props\stoneHilt.abc
+			BlueWater0 (Kato) - SpriteSurfaceName=Sprites\Water\slime.spr
+
+		GAUNTLET.DAT - WorldObjects with filename-looking strings
+			SwordInStone0 (SwordInStone) - DimsFile=models\props\stoneHilt.abc
+
+		ISLEOFFIRE.DAT - WorldObjects with filename-looking strings
+			Kato0 (Kato) - SpriteSurfaceName=Sprites\VolumeBrushSprites\Lava1.spr
+			Kato1 (Kato) - SpriteSurfaceName=Sprites\Lava\Lava.spr
+			Kato2 (Kato) - SpriteSurfaceName=Sprites\VolumeBrushSprites\Lava1.spr
+			Kato3 (Kato) - SpriteSurfaceName=Sprites\VolumeBrushSprites\Lava1.spr
+			LavaFog (Kato) - SpriteSurfaceName=Sprites\Lava\Lava.spr
+			LavaTop (Kato) - SpriteSurfaceName=Sprites\Lava\Lava.spr
+
+		SWORDINTHESTONE.DAT - WorldObjects with filename-looking strings
+			Candle33 (CandleWall) - ScriptName=PropAnim.scr
+
+		WEDDINGDAY.DAT - WorldObjects with filename-looking strings
+			Bell (Prop) - ScriptName=Bell.scr
+
+		_TEMPLEOFBARK.DAT - WorldObjects with filename-looking strings
+			SwordInStone1 (SwordInStone) - DimsFile=models\props\stoneHilt.abc
+			Lava0 (Kato) - SpriteSurfaceName=Sprites\Lava\Lava.spr
+
+	

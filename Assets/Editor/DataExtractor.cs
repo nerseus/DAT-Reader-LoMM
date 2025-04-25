@@ -985,19 +985,19 @@ public class DataExtractor : EditorWindow
             Mesh mesh = new Mesh();
             for (int vertIndex = 0; vertIndex < poly.LoVerts; vertIndex++)
             {
-                var vertex = bspModel.Vertices[(int)poly.VertexColorList[vertIndex].nVerts];
+                var vertex = bspModel.Vertices[(int)poly.VertexColorList[vertIndex].VertexCount];
 
                 Vector3 vertexData = vertex;
                 vertexData *= UnityScaleFactor;
                 vertexList[vertIndex] = vertexData;
 
                 Color color = new Color(
-                    poly.VertexColorList[vertIndex].red / 255,
-                    poly.VertexColorList[vertIndex].green / 255,
-                    poly.VertexColorList[vertIndex].blue / 255,
+                    poly.VertexColorList[vertIndex].R / 255,
+                    poly.VertexColorList[vertIndex].G / 255,
+                    poly.VertexColorList[vertIndex].B / 255,
                     1.0f);
                 vertexColorList[vertIndex] = color;
-                vertexNormalList[vertIndex] = bspModel.Planes[poly.PlaneIndex].m_vNormal;
+                vertexNormalList[vertIndex] = bspModel.Planes[poly.PlaneIndex].Normal;
 
                 // Calculate UV coordinates based on the OPQ vectors
                 // Note that since the worlds are offset from 0,0,0 sometimes we need to subtract the center point

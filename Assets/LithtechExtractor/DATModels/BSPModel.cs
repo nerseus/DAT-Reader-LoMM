@@ -26,15 +26,9 @@ public class BSPModel
     public List<string> TextureNames { get; set; } = new List<string>();
     public List<WorldPolyModel> Polies { get; set; } = new List<WorldPolyModel>();
     public List<LeafListModel> Leafs { get; set; } = new List<LeafListModel>();
-    public List<WorldPlane> Planes { get; set; } = new List<WorldPlane>();
+    public List<WorldPlaneModel> Planes { get; set; } = new List<WorldPlaneModel>();
     public List<WorldSurfaceModel> Surfaces { get; set; } = new List<WorldSurfaceModel>();
     public List<LTVector> Vertices { get; set; } = new List<LTVector>();
-    public List<WorldTreeNode> m_pNodes { get; set; }
-    public List<object> m_pUserPortals { get; set; } = new List<object>();
-    public List<object> m_pPBlockTable { get; set; } = new List<object>();
-
-    //shogo stuff
-    public List<WVertex> wVertices { get; set; } = new List<WVertex>();
 
     public int Version { get; set; }
     public Game GameType { get; set; }

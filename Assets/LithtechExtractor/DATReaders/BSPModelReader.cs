@@ -148,16 +148,16 @@ public static class BSPModelReader
         return models;
     }
 
-    private static List<WorldPlane> ReadPlanes(BinaryReader binaryReader, int planeCount)
+    private static List<WorldPlaneModel> ReadPlanes(BinaryReader binaryReader, int planeCount)
     {
-        List<WorldPlane> planes = new List<WorldPlane>();
+        List<WorldPlaneModel> planes = new List<WorldPlaneModel>();
         if (planeCount > 0)
         {
             for (int i = 0; i < planeCount; i++)
             {
-                WorldPlane pPlane = new WorldPlane();
-                pPlane.m_vNormal = ReadLTVector(ref binaryReader);
-                pPlane.m_fDist = binaryReader.ReadSingle();
+                WorldPlaneModel pPlane = new WorldPlaneModel();
+                pPlane.Normal = ReadLTVector(ref binaryReader);
+                pPlane.Distance = binaryReader.ReadSingle();
                 planes.Add(pPlane);
             }
         }
@@ -254,14 +254,14 @@ public static class BSPModelReader
         poly.PlaneIndex = binaryReader.ReadInt16();
 
         int verts = (int)poly.IndexAndNumVerts & 0xFF;
-        poly.VertexColorList = new List<VertexColor>();
+        poly.VertexColorList = new List<VertexColorModel>();
         for (int t = 0; t < verts; t++)
         {
-            VertexColor vertexColors = new VertexColor();
-            vertexColors.nVerts = (uint)binaryReader.ReadInt16();
-            vertexColors.red = binaryReader.ReadByte();
-            vertexColors.green = binaryReader.ReadByte();
-            vertexColors.blue = binaryReader.ReadByte();
+            VertexColorModel vertexColors = new VertexColorModel();
+            vertexColors.VertexCount = (uint)binaryReader.ReadInt16();
+            vertexColors.R = binaryReader.ReadByte();
+            vertexColors.G = binaryReader.ReadByte();
+            vertexColors.B = binaryReader.ReadByte();
             poly.VertexColorList.Add(vertexColors);
         }
 
@@ -270,8 +270,6 @@ public static class BSPModelReader
         poly.Q = ReadLTVector(ref binaryReader);
 
         binaryReader.BaseStream.Position -= 36;
-
-        poly.FillRelVerts();
     }
 
     private static void ReadPolies2(BinaryReader binaryReader, int version, List<WorldPolyModel> polyModels)
