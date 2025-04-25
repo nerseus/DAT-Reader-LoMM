@@ -1,10 +1,9 @@
-using LithFAQ;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
-using static LithFAQ.LTTypes;
-using static LithFAQ.LTUtils;
+using static LTTypes;
+using static LTUtils;
 
 public static class BSPModelReader
 {

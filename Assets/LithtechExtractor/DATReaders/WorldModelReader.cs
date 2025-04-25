@@ -13,8 +13,8 @@ public static class WorldModelReader
         else
         {
             model.LMGridSize = b.ReadSingle();
-            model.ExtentsMin = LithFAQ.LTUtils.ReadLTVector(ref b);
-            model.ExtentsMax = LithFAQ.LTUtils.ReadLTVector(ref b);
+            model.ExtentsMin = LTUtils.ReadLTVector(ref b);
+            model.ExtentsMax = LTUtils.ReadLTVector(ref b);
         }
 
         return model;
@@ -25,7 +25,7 @@ public static class WorldModelReader
         int stringLength = b.ReadInt32();
         if (stringLength > 0)
         {
-            return LithFAQ.LTUtils.ReadString(stringLength, ref b);
+            return LTUtils.ReadString(stringLength, ref b);
         }
 
         return null;

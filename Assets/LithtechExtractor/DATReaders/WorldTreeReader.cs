@@ -24,8 +24,8 @@ public static class WorldTreeReader
 
     public static void SkipWorldTree(BinaryReader binaryReader)
     {
-        var vBoxMin = LithFAQ.LTUtils.ReadLTVector(ref binaryReader);
-        var vBoxMax = LithFAQ.LTUtils.ReadLTVector(ref binaryReader);
+        var vBoxMin = LTUtils.ReadLTVector(ref binaryReader);
+        var vBoxMax = LTUtils.ReadLTVector(ref binaryReader);
 
         var nodeCount = binaryReader.ReadInt32();
         var terrainDepth = binaryReader.ReadInt32();

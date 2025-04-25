@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using static LithFAQ.LTTypes;
+using static LTTypes;
 
 public class WorldPolyModel
 {

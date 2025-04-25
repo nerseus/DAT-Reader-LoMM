@@ -1,5 +1,5 @@
 using UnityEngine;
-using static LithFAQ.LTTypes;
+using static LTTypes;
 
 [System.Serializable]
 public class WorldObjectPropertyModel

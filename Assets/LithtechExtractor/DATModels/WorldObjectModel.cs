@@ -1,11 +1,8 @@
-using LithFAQ;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Reflection;
 using UnityEngine;
-using static LithFAQ.LTTypes;
-using static UnityEngine.Rendering.DebugUI;
+using static LTTypes;
 
 public class WorldObjectModel
 {

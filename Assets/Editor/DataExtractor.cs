@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System;
-using LithFAQ;
 using Utility;
 using UnityEngine.Rendering;
 
@@ -30,6 +29,16 @@ public class DataExtractor : EditorWindow
     private static readonly string ScenePath = $"{GeneratedAssetsFolder}/Scenes";
 
     private static Material DefaultMaterial { get; set; }
+
+    [MenuItem("Tools/Testing")]
+    public static void Test()
+    {
+        var unityDTXModels = GetAllUnityDTXModels();
+        var abcModels = GetABCModels();
+        var sprModels = GetAllSPRModels();
+        var datModels = GetAllDATModels();
+
+    }
 
     [MenuItem("Tools/Generate All Assets")]
     public static void ExtractAll()

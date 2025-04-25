@@ -1,4 +1,4 @@
-using static LithFAQ.LTTypes;
+using static LTTypes;
 
 public class WorldSurfaceModel
 {
