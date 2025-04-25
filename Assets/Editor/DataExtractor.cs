@@ -31,26 +31,6 @@ public class DataExtractor : EditorWindow
 
     private static Material DefaultMaterial { get; set; }
 
-    [MenuItem("Tools/Test")]
-    public static void Test()
-    {
-        //var datModel = DATModelReader.ReadDATModel(@"C:\LoMM\Data\Worlds\CubeWorld3.dat", @"C:\LoMM\Data", Game.LOMM);
-        var datModel = DATModelReader.ReadDATModel(@"C:\LoMM\Data\Worlds\_RESCUEATTHERUINS.DAT", @"C:\LoMM\Data", Game.LOMM);
-        var properties = datModel.WorldObjects.SelectMany(x => x.Properties);
-
-        var boolProps = properties.Where(x => x.PropType == LTTypes.PropType.Bool).GroupBy(x => x.Name).ToList();
-
-        var s = string.Empty;
-        foreach (var boolProp in boolProps)
-        {
-            var trueCount = boolProp.Where(x => x.BoolValue == true).Count();
-            var falseCount = boolProp.Where(x => x.BoolValue == false).Count();
-            s += $"{boolProp.Key}: True={trueCount} | False={falseCount}\r\n";
-        }
-
-        Debug.Log(s);
-    }
-
     [MenuItem("Tools/Generate All Assets")]
     public static void ExtractAll()
     {
