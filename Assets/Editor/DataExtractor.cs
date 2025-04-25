@@ -14,7 +14,7 @@ public class DataExtractor : EditorWindow
     private static readonly float UnityScaleFactor = 0.02f;
     private static readonly float MoveToFloorRaycastDistance = 20f;
 
-    private static readonly string DefaultMaterialPath = $"Assets/Materials/DefaultMaterial.mat";
+    private static readonly string DefaultMaterialPath = $"Assets/Defaults/DefaultMaterial.mat";
     //private static readonly string ProjectFolder = "C:\\lomm\\data\\";
     private static readonly string ProjectFolder = @"C:\temp\LOMMConverted\OriginalUnrezzed\";
 
@@ -37,7 +37,11 @@ public class DataExtractor : EditorWindow
         System.Diagnostics.Stopwatch totalWatch = System.Diagnostics.Stopwatch.StartNew();
         System.Diagnostics.Stopwatch watch = System.Diagnostics.Stopwatch.StartNew();
         string stats = "Beginning of extract all. Using project path: " + ProjectFolder + "\r\n";
-        CreateDefaultMaterial();
+        if(!CreateDefaultMaterial())
+        {
+            return;
+        }
+
         CreateGeneratedPaths();
 
         stats += watch.GetElapsedTime("Create default material and create initial paths\r\n");
@@ -53,20 +57,19 @@ public class DataExtractor : EditorWindow
         var datModels = GetAllDATModels();
         stats += watch.GetElapsedTime($"Loaded DAT models (count={datModels.Count})\r\n");
 
-
-        var s = "Clouds1 properties\r\n";
-        var CULTOFTHESPIDER = datModels.FirstOrDefault(dat => Path.GetFileNameWithoutExtension(dat.Filename) == "CULTOFTHESPIDER");
-        var matches = CULTOFTHESPIDER.WorldObjects.Where(wo => wo.ObjectType == "DemoSkyWorldModel").ToList();
-        foreach (var match in matches)
-        {
-            s += match.Name + Environment.NewLine;
-            foreach (var prop in match.Properties)
-            {
-                s += "\t" + prop + Environment.NewLine;
-            }
-            s += "\tIndex as float=" + match.Index.ToString() + Environment.NewLine;
-        }
-        Debug.Log(s);
+        //var s = "Clouds1 properties\r\n";
+        //var CULTOFTHESPIDER = datModels.FirstOrDefault(dat => Path.GetFileNameWithoutExtension(dat.Filename) == "CULTOFTHESPIDER");
+        //var matches = CULTOFTHESPIDER.WorldObjects.Where(wo => wo.ObjectType == "DemoSkyWorldModel").ToList();
+        //foreach (var match in matches)
+        //{
+        //    s += match.Name + Environment.NewLine;
+        //    foreach (var prop in match.Properties)
+        //    {
+        //        s += "\t" + prop + Environment.NewLine;
+        //    }
+        //    s += "\tIndex as float=" + match.Index.ToString() + Environment.NewLine;
+        //}
+        //Debug.Log(s);
 
 
         //var s = "SkyBox properties\r\n";
@@ -79,17 +82,17 @@ public class DataExtractor : EditorWindow
         //Debug.Log(s);
 
 
-        //var materialLookups = CreateTexturesAndMaterials(unityDTXModels, sprModels);
-        ////var materialLookups = GetTexturesAndMaterials(unityDTXModels, sprModels);
-        //stats += watch.GetElapsedTime($"Created all textures and materials\r\n");
+        var materialLookups = CreateTexturesAndMaterials(unityDTXModels, sprModels);
+        //var materialLookups = GetTexturesAndMaterials(unityDTXModels, sprModels);
+        stats += watch.GetElapsedTime($"Created all textures and materials\r\n");
 
-        //// Step 2 - Create assets related to ABC models:
-        //var abcReferenceModels = CreateAssetsFromABCModels(abcModels, datModels, materialLookups);
-        //stats += watch.GetElapsedTime($"Created all ABC models and prefabs\r\n");
+        // Step 2 - Create assets related to ABC models:
+        var abcReferenceModels = CreateAssetsFromABCModels(abcModels, datModels, materialLookups);
+        stats += watch.GetElapsedTime($"Created all ABC models and prefabs\r\n");
 
-        //// Step 3 - Create assets for BSPs (from DATs)
-        //CreateAssetsFromDATModels(abcModels, datModels, materialLookups, abcReferenceModels);
-        //stats += watch.GetElapsedTime($"Created all DAT models and prefabs\r\n");
+        // Step 3 - Create assets for BSPs (from DATs)
+        CreateAssetsFromDATModels(abcModels, datModels, materialLookups, abcReferenceModels);
+        stats += watch.GetElapsedTime($"Created all DAT models and prefabs\r\n");
 
         // Step 6 - Create meshes for BSPs (from DATs)
 
@@ -182,9 +185,11 @@ public class DataExtractor : EditorWindow
         };
     }
 
-    private static void CreateDefaultMaterial()
+    private static bool CreateDefaultMaterial()
     {
         DefaultMaterial = AssetDatabase.LoadAssetAtPath<Material>(DefaultMaterialPath);
+
+        return DefaultMaterial != null;
     }
 
     private static void CreateGeneratedPaths()
@@ -1890,10 +1895,10 @@ public class DataExtractor : EditorWindow
         foreach (var datModel in datModels)
         {
             string name = Path.GetFileNameWithoutExtension(datModel.Filename);
-            if (name != "_RESCUEATTHERUINS")
-            {
-                continue;
-            }
+            //if (name != "_RESCUEATTHERUINS")
+            //{
+            //    continue;
+            //}
 
             //Debug.Log($"Creating {name} from {datModel.Filename}");
             GameObject rootObject = new GameObject(name);

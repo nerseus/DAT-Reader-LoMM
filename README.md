@@ -1,22 +1,31 @@
-# DAT-Reader
-Lithtech DAT World Viewer
-
+# LOMM Unity Data Extractor
+A unity project compatible with Unity 6.x and URP.
+This provides a menu under Tools -> Generate All Assets
+Will run for a couple of minutes and create new assets in your current Unity project.
+Everything is under the GeneratedAssets folder.
 
 ## **Overview**
-* It can display a .DAT file from AVP2 and NOLF (more planned).
-* Export to OBJ (Entire level, or selected objects).
-* Loads DTX Textures into Unity natively!
-* Ability to hide and unhide the BSP, blockers, and volumes.
-* Realtime light preview with shadows
-* Object placement.
-* Preliminary object editing.
+* Reads LOMM files - DAT, ABC, DTX, and SPR
+* Converts all DTX files into PNG
+* Converts all variations of textures into Materials (some DTXs have different levels of transparency set via DAT files)
+* Converts all ABC files into meshes and prefabs
+* May convert an ABC as multiple prefabs - one for each set of textures that references the file
+* Converts DAT files into a prefab with child prefab meshes and objects
+* Each DAT prefab will contain correctly placed, sized ABC models (props and more)
 
 ## **TODO**
-* Saving changes back to .DAT
-* Weapon/Item placement for NOLF
-* Support more games
+* Transparency fixes
+* Cleanup Skybox generation
+* Optimize pipeline
+* Better grouping of BSP objects and WorldObjects
+* Add scripts to some objects to track original DAT properties
+* Create Lights (port code from parent project)
+* Create Sounds (port code from parent project)
+* Create Scene or better prefab with entire "map" in one place
+* Possibly import gibs
+* Possibly add skeletons and animations to models
 
-<p align="center">
-<img src="./images/datviewer_nolf.png" alt="DatViewer66", width="738">
-<img src="./images/datviewer.png" alt="DatViewer70", width="738">
-</p>
+
+
+
+

@@ -438,16 +438,9 @@ public static class DTXConverter
             ApplyMipMapOffset(model.Header, textureSize);
         }
 
-        Material material = new Material(Shader.Find("Shader Graphs/Lithtech Vertex"));
-        if (model.Header.UseFullBright)
-        {
-            material.SetInt("_FullBright", 1);
-        }
-
         var unityDTX = new UnityDTXModel
         {
             DTXModel = model,
-            Material = material,
             Texture2D = convertedTexture2D,
             TextureSize = textureSize,
             UseTransparency = texture2DInfo.UseTransparency
