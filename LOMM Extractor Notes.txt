@@ -1,0 +1,116 @@
+LOMM Converter Notes
+
+============================================================================================
+TODO:
+============================================================================================
+	- Create versions of materials that have special transparency properties
+		Might be the same texture but different opacity?
+		Need naming translation convention so they can be created in one pass and found/referenced later
+		
+	- Create items first then load into reference objects
+		Can skip the create later on
+		
+	- Transparency issues - some glass isn't working
+		Sword in the stone
+			Church window should be 2-sided?
+
+	- Transparency issues - BlueWater0
+	
+	- Skybox mesh - replace with setting skybox on scene
+	
+	- Don't create prefabs for BSP meshes - just child meshes of main object
+	
+	- Better grouping of WorldObjects - use WorldObjectType
+	
+	- Add WorldObject monobehavior so the created objects can save their key properties
+	
+	- Create dummy materials pointing to default for missing strings.
+		BSP with missing textures:
+			TEXTURES\LevelTextures\Architex\Wall\BricksGranite.dtx
+			TEXTURES\LevelTextures\Architex\Wall\GraniteBlockGreen.dtx
+			TEXTURES\Met070.dtx
+			Default
+			TEXTURES\LevelTextures\E3demo\City\MetalBar.dtx
+			TEXTURES\LevelTextures\Architex\Floor\MarbleOctTileBrown.dtx
+
+	- AIRails are not tagged the same as AITrk
+	
+	- Create "game" script that will position player on a start node to make testing easier
+			
+	- Create Lights
+	
+	- Create Sounds
+	
+	- Create Scene or maybe just prefab?
+	
+	- Sword in stone:
+		DRAGONBLADE.DAT - WorldObjects with filename-looking strings
+			SwordInStone0 (SwordInStone) - DimsFile=models\props\stoneHilt.abc
+			BlueWater0 (Kato) - SpriteSurfaceName=Sprites\Water\slime.spr
+
+	- Create "Destructable" Prefabs of ABCModels with textures defined by:
+		ObjectType = "DestructableProp" or "DestructableBrush"
+		WorldObjects with properties:
+			CustomTexture and CustomModel
+			Seem to be gibs mostly?
+				Name (PT_STRING) = UrnGargoyle4
+				Filename (PT_STRING) = MODELS\Props\UrnGargoyle.abc
+				Skin (PT_STRING) = Skins\Props\UrnGargoyle.dtx
+				CustomTexture (PT_STRING) = skins\props\urngargoyle.dtx
+				CustomSound (PT_STRING) = Sounds\Events\shatterpotterybig03.wav
+				CustomModel (PT_STRING) = models\props\debris\urndebris.abc
+				BounceSound (PT_STRING) = 
+			
+	
+
+============================================================================================
+Notes:
+============================================================================================
+	Team Number = 0 evil, 1 = good, 3 = monsters
+
+	TranslucentWorldModel and ChromaKey
+		Probably not needed...
+			TranslucentWorldModel - used to create 2nd material with name suffix "_Chromakey"
+				if worldObjectModel.ObjectName == "TranslucentWorldModel" || obj.objectName == "Electricity" || obj.objectName == "Door"
+				ChromaKey
+					Defined on the "Litech Vertex Transparent" material
+					Use the Red value of the Color to indicate transparency: 255 is fully on, 128 is pretty much see through, 114 is "off"
+						Green and Blue seem to have no control over transparency
+					CAN work with FullBright
+
+	SkyBox
+		Shader = "Mobile/Skybox"
+			Front/Back/Left/Right 	: Tiling X and Y = 0.975
+			Up/Down					: Tiling X and Y = 0.98
+
+
+	- Materials
+		When creating materials - need to lookup:
+			Find a BSPModel with a Textures[] reference to it
+			If there is one, find the matching WorldObject with the same name as BSPModel. For example, "BlueWater0"
+			From the WorldObject properties, look for SurfaceAlpha and use that value to set on the alpha transparency
+			Or rather... If SurfaceAlpha exists and < 1 then turn on alpha transparency (from alpha channel of texture).
+				COULD turn on alpha and use the "Color" of the material to set transparency - like SurfaceAlpha = 0.7 would set the Color.A = 255 * 0.7
+				But that's a uniform alpha blend instead of pulling from PNG
+
+
+	- Prop research:
+		If Properties has "Solid" = false... ? No collision mesh?
+
+
+	On Wedding day - boxes called "PortalZoneX"
+		Shown with DefaultMaterial
+		Acting as portals to split up the BSP?
+		These are the ONLY items using DefaultMaterial.
+		
+		Spiders Den:
+			DefaultMaterial is only used on AIBarrier:
+
+	Other items with sounds:
+		WorldObjectModel with ObjectType = WallTorch
+			Translucency = 1.000
+				This is the ONLY Translucency value
+			FireType = 
+				only FireType values are:
+					1073741824 <- 4000 0000
+					1065353216 <- 3F80 0000

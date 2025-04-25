@@ -36,3 +36,13 @@ sysinfo.txt
 # Builds
 *.apk
 *.unitypackage
+/.cr/personal/Bookmarks
+/Assets/DATs
+/Assets/GeneratedAssets
+/Assets/Logos/
+/Assets/Renderer/
+/Assets/Scenes/
+/Assets/LithTech/
+/Assets/StarterAssets/
+/Logs/
+/UserSettings/
