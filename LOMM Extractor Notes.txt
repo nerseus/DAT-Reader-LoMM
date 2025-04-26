@@ -7,15 +7,30 @@ TODO:
 		Might be the same texture but different opacity?
 		Need naming translation convention so they can be created in one pass and found/referenced later
 		
+		No Alpha
+			No 
+		
+		Clipping only (like LICH)
+		
+		Transparent (like blue water)
+		
 	- Create items first then load into reference objects
 		Can skip the create later on
 		
 	- Transparency issues - some glass isn't working
 		Sword in the stone
 			Church window should be 2-sided?
-
+		
 	- Transparency issues - BlueWater0
 	
+	- Objects are mis-rotated:
+		Rescue Ruins
+			Bench0 (BENCH02)
+		
+		Blood Feud
+			WallTorch23 (TORCH21)	World rotation: Y = -180		Should be -90 	(-90 from given)
+			WallTorch52 (TORCH21)	World rotation: Y = 90.4		Should be 0 	(-90 from given)	- manually adjusting puts it inside the wall
+		
 	- Skybox mesh - replace with setting skybox on scene
 	
 	- Don't create prefabs for BSP meshes - just child meshes of main object
@@ -23,6 +38,14 @@ TODO:
 	- Better grouping of WorldObjects - use WorldObjectType
 	
 	- Add WorldObject monobehavior so the created objects can save their key properties
+	
+	- Fix:
+		Creating WorldObjects for _TEMPLEOFBARK
+			ERROR - Object LizardWarrior0 has filename but no skin(s) - could instantiate mesh if we want?
+			ERROR - Object LizardWarrior1 has filename but no skin(s) - could instantiate mesh if we want?
+			ERROR - Object LizardWarrior2 has filename but no skin(s) - could instantiate mesh if we want?
+			ERROR - Object LizardWarrior4 has filename but no skin(s) - could instantiate mesh if we want?
+			ERROR - Object LizardWarrior5 has filename but no skin(s) - could instantiate mesh if we want?
 	
 	- Create dummy materials pointing to default for missing strings.
 		BSP with missing textures:
@@ -61,7 +84,9 @@ TODO:
 				CustomModel (PT_STRING) = models\props\debris\urndebris.abc
 				BounceSound (PT_STRING) = 
 			
-	
+	- Some props are not rotated or placed correctly?
+		Bloodfeud - Brazier6 and WallTorch23
+		Chateau Escape - 4 statues, 1 is on top of a pillar but 3 are not: Statue3 is good, Statue1, Statue2, Statue4 are floating
 
 ============================================================================================
 Notes:
@@ -114,3 +139,19 @@ Notes:
 				only FireType values are:
 					1073741824 <- 4000 0000
 					1065353216 <- 3F80 0000
+
+
+============================================================================================
+Recent Fixes:
+============================================================================================
+	- Y offset seems a bit off?
+		Rescue - Oil Lamp
+			Original pos = -2446, 24, 1852
+			Min/Max Y of ABC model = Min=-9.274498, Max=9.274498.
+			
+			YPos:				0.48
+			Appears to rest at:	0.46
+			Diff of 0.02 (unity scale factor).
+				Maybe shift everything down by UnityScaleFactor (as this is the equivalent of 1 unit)
+			
+			Height after adjustment to 0:	0.18548996

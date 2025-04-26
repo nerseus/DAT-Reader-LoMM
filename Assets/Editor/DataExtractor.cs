@@ -6,11 +6,15 @@ using System.Linq;
 using System;
 using Utility;
 using UnityEngine.Rendering;
+using UnityEditorInternal;
 
 public class DataExtractor : EditorWindow
 {
     private static readonly bool ShowLogErrors = false;
     private static readonly float UnityScaleFactor = 0.02f;
+    // World Objects should be shifted down 1 unit.
+    // Since we scale things by UnityScaleFactor, we can just use that directly to get the offset.
+    private static readonly Vector3 WorldObjectOffset = new Vector3(0, -UnityScaleFactor, 0); 
     private static readonly float MoveToFloorRaycastDistance = 20f;
 
     private static readonly string DefaultMaterialPath = $"Assets/Defaults/DefaultMaterial.mat";
@@ -33,11 +37,16 @@ public class DataExtractor : EditorWindow
     [MenuItem("Tools/Testing")]
     public static void Test()
     {
-        var unityDTXModels = GetAllUnityDTXModels();
+        //var unityDTXModels = GetAllUnityDTXModels();
         var abcModels = GetABCModels();
-        var sprModels = GetAllSPRModels();
-        var datModels = GetAllDATModels();
+        //var sprModels = GetAllSPRModels();
+        //var datModels = GetAllDATModels();
 
+        var oilLamp = abcModels.Where(x => Path.GetFileNameWithoutExtension(x.RelativePathToABCFileLowercase) == "oillamp").FirstOrDefault();
+        float minY = oilLamp.Pieces.Min(piece => piece.LODs[0].Vertices.Min(vert => vert.Location.y));
+        float maxY = oilLamp.Pieces.Max(piece => piece.LODs[0].Vertices.Max(vert => vert.Location.y));
+
+        Debug.Log($"Min={minY}, Max={maxY}.");
     }
 
     [MenuItem("Tools/Generate All Assets")]
@@ -416,7 +425,6 @@ public class DataExtractor : EditorWindow
             EditorUtility.DisplayProgressBar("Creating Materials", $"Item {i} of {materialLookups.Values.Count}", progress);
 
             Texture2D texture2d = AssetDatabase.LoadAssetAtPath<Texture2D>(materialLookup.PathToPNG);
-            texture2d.alphaIsTransparency = true;
 
             bool useFullBright = materialLookup.DTXModel.DTXModel.Header.UseFullBright;
 
@@ -425,26 +433,34 @@ public class DataExtractor : EditorWindow
             material.name = materialLookup.Name;
             material.mainTexture = texture2d;
             material.SetFloat("_Smoothness", 0f);
+            material.SetFloat("_BlendModePreserveSpecular", 0f);
 
-            if (materialLookup.DTXModel.UseTransparency)
+            if (materialLookup.DTXModel.TransparencyType == TransparencyTypes.NoTransparency)
+            {
+                material.SetFloat("_Surface", 0f); // 0 = Opaque, 1 = Transparent
+                material.SetOverrideTag("RenderType", "Opaque");
+                material.SetFloat("_AlphaClip", 0f); // enable alpha clipping
+                material.DisableKeyword("_ALPHATEST_ON");
+                material.renderQueue = (int)RenderQueue.Geometry;
+            }
+            else if (materialLookup.DTXModel.TransparencyType == TransparencyTypes.ClipOnly)
             {
                 material.SetFloat("_Surface", 0f); // 0 = Opaque, 1 = Transparent
                 material.SetOverrideTag("RenderType", "Opaque");
                 material.SetFloat("_AlphaClip", 1f); // enable alpha clipping
                 material.SetFloat("_Cutoff", 0.5f);  // default threshold
                 material.EnableKeyword("_ALPHATEST_ON");
-
-                //material.SetFloat("_BlendModePreserveSpecular", 0f);
-                //material.SetFloat("_Surface", 1f); // 0 = Opaque, 1 = Transparent
-                //material.SetOverrideTag("RenderType", "Transparent");
-                //material.renderQueue = (int)RenderQueue.Transparent;
-
-                //material.SetInt("_SrcBlend", (int)BlendMode.SrcAlpha);
-                //material.SetInt("_DstBlend", (int)BlendMode.OneMinusSrcAlpha);
-                //material.SetInt("_ZWrite", 0); // Turn off depth writing for transparency
+                material.renderQueue = (int)RenderQueue.Transparent;
             }
-
-            //var material = DTXConverter.CreateDefaultMaterial(materialLookup.Name, texture2d, useFullBright, false);
+            else if (materialLookup.DTXModel.TransparencyType == TransparencyTypes.BlendedTransparency)
+            {
+                material.SetFloat("_Surface", 1f); // 0 = Opaque, 1 = Transparent
+                material.SetOverrideTag("RenderType", "Transparent");
+                material.SetFloat("_Blend", 0);   // 0 = Alpha, 1 = Premultiply (keep it 0 for alpha)
+                material.SetFloat("_AlphaClip", 0f); // enable alpha clipping
+                material.DisableKeyword("_ALPHATEST_ON");
+                material.renderQueue = (int)RenderQueue.Transparent;
+            }
 
             var pathToMaterial = Path.ChangeExtension(Path.Combine(MaterialPath, materialLookup.RelativeLookupPath), "mat").ConvertFolderSeperators();
             Directory.CreateDirectory(Path.GetDirectoryName(pathToMaterial));
@@ -495,10 +511,10 @@ public class DataExtractor : EditorWindow
         }
     }
 
-    private static void SetMaterialAlpha(Dictionary<string, MaterialLookupModel> materialLookups)
+    private static void SetMaterialAlphaForBlendedTextures(Dictionary<string, MaterialLookupModel> materialLookups)
     {
         var pathToPNGs = materialLookups.Values
-            .Where(x => x.DTXModel.UseTransparency)
+            .Where(x => x.DTXModel.TransparencyType == TransparencyTypes.BlendedTransparency)
             .Select(x => x.PathToPNG)
             .Distinct()
             .ToList();
@@ -508,9 +524,9 @@ public class DataExtractor : EditorWindow
             TextureImporter importer = AssetImporter.GetAtPath(pathToPNG) as TextureImporter;
             if (importer != null)
             {
-                importer.alphaIsTransparency = true;
+                importer.alphaIsTransparency = false;
                 importer.textureType = TextureImporterType.Default;
-                importer.androidETC2FallbackOverride = AndroidETC2FallbackOverride.Quality16Bit;
+                importer.alphaSource = TextureImporterAlphaSource.FromInput;
                 importer.SaveAndReimport();
             }
         }
@@ -520,7 +536,7 @@ public class DataExtractor : EditorWindow
     {
         Dictionary<string, MaterialLookupModel> materialLookups = CreateTextures(unityDTXModels);
 
-        //SetMaterialAlpha(materialLookups);
+        SetMaterialAlphaForBlendedTextures(materialLookups);
 
         CreateMaterials(materialLookups);
 
@@ -1790,7 +1806,8 @@ public class DataExtractor : EditorWindow
         GameObject abcObject = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
         abcObject.name = $"{worldObjectModel.Name} ({prefab.name})";
         abcObject.transform.parent = rootWorldObject.transform;
-        abcObject.transform.position = new Vector3(worldObjectModel.Position.X, worldObjectModel.Position.Y, worldObjectModel.Position.Z) * UnityScaleFactor;
+        var position = new Vector3(worldObjectModel.Position.X, worldObjectModel.Position.Y, worldObjectModel.Position.Z) * UnityScaleFactor;
+        abcObject.transform.position = position + WorldObjectOffset;
         abcObject.transform.eulerAngles = new Vector3(worldObjectModel.Rotation.X * Mathf.Rad2Deg, worldObjectModel.Rotation.Y * Mathf.Rad2Deg, worldObjectModel.Rotation.Z * Mathf.Rad2Deg);
         abcObject.tag = tag;
         if (worldObjectModel.Scale != default(float) && worldObjectModel.Scale != 1f)

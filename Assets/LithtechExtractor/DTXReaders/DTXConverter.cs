@@ -62,7 +62,7 @@ public static class DTXConverter
         return TextureFormat.BGRA32; // Default to BGRA32
     }
 
-    private static Texture2DInfoModel ReadTextureData(DTXModel model)
+    private static Texture2D ReadTextureData(DTXModel model)
     {
         //Version check must come before everything else!!
 		if (model.Header.Version == DTXVersions.LT1
@@ -90,7 +90,7 @@ public static class DTXConverter
         return Create32bitTexture(model);
     }
 
-    private static void FlipTexture(Texture2D texture)
+    private static TransparencyTypes FlipTextureAndGetTransparencyType(Texture2D texture)
     {
         int width = texture.width;
         int height = texture.height;
@@ -98,6 +98,9 @@ public static class DTXConverter
         Color[] pixels = texture.GetPixels();
         Color[] flipped = new Color[pixels.Length];
 
+        bool foundWhite = false;
+        bool foundBlack = false;
+        bool foundGrey = false;
         for (int y = 0; y < height; y++)
         {
             int srcRow = y * width;
@@ -105,20 +108,42 @@ public static class DTXConverter
             for (int x = 0; x < width; x++)
             {
                 flipped[dstRow + x] = pixels[srcRow + x];
+                if (pixels[srcRow + x].a == 1)
+                {
+                    foundWhite = true;
+                }
+                else if (pixels[srcRow + x].a == 0)
+                {
+                    foundBlack = true;
+                }
+                else
+                {
+                    foundGrey = true;
+                }
             }
         }
 
         texture.SetPixels(flipped);
         texture.Apply();
+
+        if (foundGrey)
+        {
+            return TransparencyTypes.BlendedTransparency;
+        }
+
+        if (foundBlack && foundWhite)
+        {
+            return TransparencyTypes.ClipOnly;
+        }
+
+        return TransparencyTypes.NoTransparency;
     }
 
-    private static Texture2DInfoModel Create32bitTexture(DTXModel model)
+    private static Texture2D Create32bitTexture(DTXModel model)
     {
         // BGRA32 ?
-        bool useTransparency = true;
         if (!model.Header.Prefer4444)
         {
-            useTransparency = false;
             // Force alpha to 1.0 for everything:
             for (int i = 0; i < model.Data.Length; i += 4)
             {
@@ -139,51 +164,10 @@ public static class DTXConverter
 
         texture2D.Apply();
 
-        if (!useTransparency)
-        {
-            return new Texture2DInfoModel(texture2D, false);
-        }
-
-        return new Texture2DInfoModel(texture2D, UseTransparency(texture2D));
+        return texture2D;
     }
 
-    private static bool UseTransparency(List<Color32> pixels)
-    {
-        if (pixels.All(pixel => pixel.a == 1))
-        {
-            return false;
-        }
-
-        if (pixels.All(pixel => pixel.a == 0))
-        {
-            return false;
-        }
-
-        return true;
-    }
-
-    private static bool UseTransparency(Color[] pixels)
-    {
-        if (pixels.All(pixel => pixel.a == 1f))
-        {
-            return false;
-        }
-
-        if (pixels.All(pixel => pixel.a == 0f))
-        {
-            return false;
-        }
-
-        return true;
-    }
-
-    private static bool UseTransparency(Texture2D texture)
-    {
-        Color[] pixels = texture.GetPixels();
-        return UseTransparency(pixels);
-    }
-
-    private static Texture2DInfoModel CreateCompressedTexture(DTXModel model)
+    private static Texture2D CreateCompressedTexture(DTXModel model)
     {
         // DXT1 - Default
         TextureFormat textureFormat = GetTextureFormat(model.Header.BPPFormat);
@@ -224,10 +208,10 @@ public static class DTXConverter
 
         texture2D.Apply();
 
-        return new Texture2DInfoModel(texture2D, UseTransparency(texture2D));
+        return texture2D;
     }
 
-    private static Texture2DInfoModel Create8BitPaletteTexture(DTXModel model)
+    private static Texture2D Create8BitPaletteTexture(DTXModel model)
     {
         var palette = new List<Color32>();
 
@@ -260,15 +244,9 @@ public static class DTXConverter
         }
 
         // I alpha is always 0 - convert to white so everything shows.
-        bool useTransparency = true;
         if (palette.All(c => c.a == 0))
         {
-            useTransparency = false;
             palette.ForEach(x => x.a = 255);
-        }
-        else if (palette.All(c => c.a == 255))
-        {
-            useTransparency = false;
         }
 
         // Read the data - just indexes into the palette above.
@@ -302,10 +280,10 @@ public static class DTXConverter
 
         texture2D.Apply();
 
-        return new Texture2DInfoModel(texture2D, useTransparency);
+        return texture2D;
     }
 
-    private static Texture2DInfoModel Create32BitPaletteTexture(DTXModel model)
+    private static Texture2D Create32BitPaletteTexture(DTXModel model)
     {
         if (model.Header.SectionCount != 1)
         {
@@ -375,47 +353,19 @@ public static class DTXConverter
 
         texture2D.Apply();
 
-        return new Texture2DInfoModel(texture2D, UseTransparency(palette));
-    }
-
-    public static Material CreateDefaultMaterial(string name, Texture2D texture, bool useFullbright = false, bool useChromaKey = false)
-    {
-        Material material = new Material(Shader.Find("Shader Graphs/Lithtech Vertex"));
-        material.name = name;
-        material.mainTexture = texture;
-
-        if (useFullbright)
-        {
-            material.SetInt("_FullBright", 1);
-        }
-
-        if (useChromaKey)
-        {
-            material.SetInt("_Chromakey", 1);
-            material.SetFloat("NormalIntensityAmount", 0); // turn off normal calculation for now.
-            material.SetFloat("_Metallic", 0.9f);
-            material.SetFloat("_Smoothness", 0.8f);
-            material.SetColor("_Color", Color.white);
-        }
-        else
-        {
-            material.SetFloat("_Metallic", 0.9f);
-            material.SetFloat("_Smoothness", 0.8f);
-        }
-
-        return material;
+        return texture2D;
     }
 
     public static UnityDTXModel ConvertDTX(DTXModel model)
     {
-        var texture2DInfo = ReadTextureData(model);
-        if (texture2DInfo == null)
+        var texture2d = ReadTextureData(model);
+        if (texture2d == null)
         {
             return null;
         }
 
-        texture2DInfo.Texture2D.wrapMode = TextureWrapMode.Repeat;
-        Texture2D convertedTexture2D = ConvertTextureToArgb32(texture2DInfo.Texture2D);
+        texture2d.wrapMode = TextureWrapMode.Repeat;
+        Texture2D convertedTexture2D = ConvertTextureToArgb32(texture2d);
         if (convertedTexture2D == null)
         {
             return null;
@@ -423,7 +373,7 @@ public static class DTXConverter
 
         convertedTexture2D.wrapMode = TextureWrapMode.Repeat;
 
-        FlipTexture(convertedTexture2D);
+        var transparencyType = FlipTextureAndGetTransparencyType(convertedTexture2D);
 
         TextureSizeModel textureSize = new TextureSizeModel
         {
@@ -443,7 +393,7 @@ public static class DTXConverter
             DTXModel = model,
             Texture2D = convertedTexture2D,
             TextureSize = textureSize,
-            UseTransparency = texture2DInfo.UseTransparency
+            TransparencyType = transparencyType
         };
 
         return unityDTX;
