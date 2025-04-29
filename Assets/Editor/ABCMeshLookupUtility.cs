@@ -24,9 +24,29 @@ public class ABCMeshLookupUtility : DataExtractor
         return true;
     }
 
-    private static float GetLowestYValue(ABCModel abcModel)
+    private static float GetMinXValue(ABCModel abcModel)
+    {
+        return abcModel.Pieces.Min(piece => piece.LODs[0].Vertices.Min(vert => vert.Location.x)) * UnityScaleFactor;
+    }
+
+    private static float GetMaxXValue(ABCModel abcModel)
+    {
+        return abcModel.Pieces.Max(piece => piece.LODs[0].Vertices.Max(vert => vert.Location.x)) * UnityScaleFactor;
+    }
+
+    private static float GetMinYValue(ABCModel abcModel)
     {
         return abcModel.Pieces.Min(piece => piece.LODs[0].Vertices.Min(vert => vert.Location.y)) * UnityScaleFactor;
+    }
+
+    private static float GetMinZValue(ABCModel abcModel)
+    {
+        return abcModel.Pieces.Min(piece => piece.LODs[0].Vertices.Min(vert => vert.Location.z)) * UnityScaleFactor;
+    }
+
+    private static float GetMaxZValue(ABCModel abcModel)
+    {
+        return abcModel.Pieces.Max(piece => piece.LODs[0].Vertices.Max(vert => vert.Location.z)) * UnityScaleFactor;
     }
 
     private static Mesh CombineMeshPieces(List<Mesh> meshes, bool mergeSubMeshes)
@@ -47,7 +67,7 @@ public class ABCMeshLookupUtility : DataExtractor
         return combinedMesh;
     }
 
-    private static Mesh CreateMesh(PieceModel piece, float yVertOffset)
+    private static Mesh CreateMesh(PieceModel piece, Vector3 vertOffset)
     {
         List<Mesh> individualMeshes = new List<Mesh>();
 
@@ -69,8 +89,7 @@ public class ABCMeshLookupUtility : DataExtractor
 
                 // Add vertices, normals, and UVs for the current face
                 var vert = piece.LODs[0].Vertices[originalVertexIndex].Location * UnityScaleFactor;
-                var offset = new Vector3(0, yVertOffset, 0);
-                faceVertices.Add(vert - offset);
+                faceVertices.Add(vert + vertOffset);
                 faceNormals.Add(piece.LODs[0].Vertices[originalVertexIndex].Normal);
 
                 Vector2 uv = new Vector2(faceVertex.Texcoord.x, faceVertex.Texcoord.y);
@@ -114,9 +133,10 @@ public class ABCMeshLookupUtility : DataExtractor
 
     private static Mesh CreateMesh(ABCModel abcModel)
     {
-        var yVertOffset = BottomAlignABCModels
-            ? GetLowestYValue(abcModel)
-            : 0f;
+        var xVertOffset = -((GetMinXValue(abcModel) + GetMaxXValue(abcModel)) / 2f);
+        var yVertOffset = -GetMinYValue(abcModel);
+        var zVertOffset = -((GetMinZValue(abcModel) + GetMaxZValue(abcModel)) / 2f);
+        var vertOffset = new Vector3(xVertOffset, yVertOffset, 0);
 
         // Initialize meshes so there is one list per material.
         List<List<Mesh>> meshes = new List<List<Mesh>>();
@@ -128,7 +148,7 @@ public class ABCMeshLookupUtility : DataExtractor
 
         foreach (var piece in abcModel.Pieces.Where(x => x.LODs[0].Faces.Count > 1))
         {
-            var meshPiece = CreateMesh(piece, yVertOffset);
+            var meshPiece = CreateMesh(piece, vertOffset);
             meshes[piece.MaterialIndex].Add(meshPiece);
         }
 

@@ -9,7 +9,8 @@ using UnityEngine.Rendering;
 
 public class DataExtractor : EditorWindow
 {
-    public static readonly bool BottomAlignABCModels = true;
+    public static readonly bool CenterXAlignABCModels = true;
+    public static readonly bool BottomYAlignABCModels = true;
 
     public static readonly bool ShowLogErrors = false;
     public static readonly float UnityScaleFactor = 0.02f;
@@ -82,13 +83,6 @@ public class DataExtractor : EditorWindow
 
         CreateAssetsFromDATModels(datModels); stats += watch.GetElapsedTime("CreateAssetsFromDATModels\r\n", 1);
 
-        //stats += watch.GetElapsedTime($"Created all DAT models and prefabs\r\n");
-
-        // Step 6 - Create meshes for BSPs (from DATs)
-
-        // Step 7 - Create scene prefab with references to BSP mesh, models, lights, etc.
-
-        //AssetDatabase.SaveAssets();
         stats += totalWatch.GetElapsedTime("Total Processing Time\r\n");
         Debug.Log(stats);
     }
@@ -1269,9 +1263,7 @@ public class DataExtractor : EditorWindow
         abcObject.transform.parent = rootWorldObject.transform;
         AddWorldObjectComponent(abcObject, worldObjectModel);
 
-        var worldObjectModelPosition = worldObjectModel.Position.Value  * UnityScaleFactor;
-
-        abcObject.transform.position = worldObjectModelPosition + WorldObjectOffset;
+        abcObject.transform.position = GetABCObjectLocation(worldObjectModel, abcObject);
         abcObject.transform.eulerAngles = worldObjectModel.RotationInDegrees.Value;
         abcObject.tag = tag;
         if (worldObjectModel.Scale.HasValue && worldObjectModel.Scale != 1f && worldObjectModel.Scale != 0f)
@@ -1303,18 +1295,11 @@ public class DataExtractor : EditorWindow
         return gameObject;
     }
 
-    private static void MoveObjectToGroundOrig(GameObject gameObject, RaycastHit hit)
+    private static void MoveObjectToGround(GameObject gameObject, RaycastHit hit)
     {
-        //// calculate bounds of object so it doesnt fall through the floor
-        //Bounds bounds = gameObject.GetComponent<Renderer>().bounds;
-        //float halfHeight = bounds.extents.y;
+        var hitPosition = new Vector3(gameObject.transform.position.x, hit.point.y, gameObject.transform.position.z);
 
-        ////sometimes pivot point isnt in the middle of the object, so we need to compoensate for that
-        //float pivotOffset = gameObject.transform.position.y - bounds.center.y;
-
-        ////move object to hit point
-        //gameObject.transform.position = new Vector3(gameObject.transform.position.x, hit.point.y + halfHeight + pivotOffset, gameObject.transform.position.z);
-        gameObject.transform.position = new Vector3(gameObject.transform.position.x, hit.point.y, gameObject.transform.position.z);
+        gameObject.transform.position = hitPosition;
     }
 
     private static void MoveDownToFloor(GameObject abcObject)
@@ -1327,8 +1312,14 @@ public class DataExtractor : EditorWindow
 
         if (hits.Count > 0)
         {
-            MoveObjectToGroundOrig(abcObject, hits[0]);
+            MoveObjectToGround(abcObject, hits[0]);
         }
+    }
+
+    private static Vector3 GetABCObjectLocation(WorldObjectModel worldObjectModel, GameObject abcObject)
+    {
+        var worldObjectModelPosition = worldObjectModel.Position.Value * UnityScaleFactor;
+        return worldObjectModelPosition + WorldObjectOffset;
     }
 
     private static Dictionary<string, GameObject> CreateWorldObjects(GameObject rootWorldObject, string name, DATModel datModel)
@@ -1427,6 +1418,7 @@ public class DataExtractor : EditorWindow
         {
             string name = Path.GetFileNameWithoutExtension(datModel.Filename);
             //if (name.ToUpper() != "CHATEAUESCAPE")
+            //if (name.ToUpper() != "_RESCUEATTHERUINS")
             //{
             //    continue;
             //}
