@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 using UnityEngine;
 
 public static class DATModelReader
@@ -84,6 +85,21 @@ public static class DATModelReader
         datModel.WorldObjects = WorldObjectModelReader.ReadWorldObjectModels(binaryReader);
 
         binaryReader.BaseStream.Close();
+
+        //foreach(var worldObjectModel in datModel.WorldObjects)
+        //{
+        //    var hasBSP = datModel.BSPModels.Any(x => x.WorldName == worldObjectModel.Name);
+        //    worldObjectModel.IsBSP = hasBSP;
+        //}
+
+        foreach (var bspModel in datModel.BSPModels)
+        {
+            var matchingWorldObject = datModel.WorldObjects.FirstOrDefault(x => x.Name== bspModel.WorldName);
+            if (matchingWorldObject != null)
+            {
+                matchingWorldObject.IsBSP = true;
+            }
+        }
 
         return datModel;
     }

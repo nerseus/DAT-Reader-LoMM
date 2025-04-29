@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 public static class StringExtensions
@@ -23,5 +24,25 @@ public static class StringExtensions
         }
 
         return $"{prefix}{elapsed} {message}";
+    }
+
+    public static List<string> SplitOnSemicolonAndLowercase(this string skins)
+    {
+        var list = new List<string>();
+
+        if (skins != null)
+        {
+            var splitSkins = skins.Split(";");
+            foreach (var splitItem in splitSkins)
+            {
+                var item = (splitItem ?? string.Empty).Trim();
+                if (!string.IsNullOrEmpty(item))
+                {
+                    list.Add(item.ConvertFolderSeperators().ToLower());
+                }
+            }
+        }
+
+        return list;
     }
 }

@@ -6,111 +6,77 @@ using System.Linq;
 using System;
 using Utility;
 using UnityEngine.Rendering;
-using UnityEditorInternal;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.TextBox;
 
 public class DataExtractor : EditorWindow
 {
-    private static readonly bool ShowLogErrors = false;
-    private static readonly float UnityScaleFactor = 0.02f;
+    public static readonly bool BottomAlignABCModels = false;
+
+    public static readonly bool ShowLogErrors = false;
+    public static readonly float UnityScaleFactor = 0.02f;
     // World Objects should be shifted down 1 unit.
     // Since we scale things by UnityScaleFactor, we can just use that directly to get the offset.
-    private static readonly Vector3 WorldObjectOffset = new Vector3(0, -UnityScaleFactor, 0); 
-    private static readonly float MoveToFloorRaycastDistance = 20f;
+    public static readonly Vector3 WorldObjectOffset = new Vector3(0, -UnityScaleFactor, 0); 
+    public static readonly float MoveToFloorRaycastDistance = 20f;
 
-    private static readonly string DefaultMaterialPath = $"Assets/Defaults/DefaultMaterial.mat";
-    //private static readonly string ProjectFolder = "C:\\lomm\\data\\";
-    private static readonly string ProjectFolder = @"C:\temp\LOMMConverted\OriginalUnrezzed\";
+    public static readonly string MissingMaterialPath = $"Assets/Defaults/MissingMaterial.mat";
+    public static readonly string InvisibleMaterialPath = $"Assets/Defaults/InvisibleMaterial.mat";
+    public static readonly string CustomInvisibleMaterialPath = $"Assets/Defaults/CustomInvisibleMaterial.mat";
 
-    private static readonly string GeneratedAssetsFolder = "Assets/GeneratedAssets";
-    private static readonly string TexturePath = $"{GeneratedAssetsFolder}/Textures";
-    private static readonly string MaterialPath = $"{GeneratedAssetsFolder}/Materials";
+    //public static readonly string ProjectFolder = "C:\\lomm\\data\\";
+    public static readonly string ProjectFolder = @"C:\temp\LOMMConverted\OriginalUnrezzed\";
 
-    private static readonly string ABCMeshPath = $"{GeneratedAssetsFolder}/Meshes/ABCModels";
-    private static readonly string ABCPrefabPath = $"{GeneratedAssetsFolder}/Prefabs/ABCModels";
+    public static readonly string GeneratedAssetsFolder = "Assets/GeneratedAssets";
+    public static readonly string TexturePath = $"{GeneratedAssetsFolder}/Textures";
+    public static readonly string MaterialPath = $"{GeneratedAssetsFolder}/Materials";
 
-    private static readonly string BSPMeshPath = $"{GeneratedAssetsFolder}/Meshes/BSPModels";
-    private static readonly string BSPPrefabPath = $"{GeneratedAssetsFolder}/Prefabs/BSPModels";
-    private static readonly string ScenePath = $"{GeneratedAssetsFolder}/Scenes";
+    public static readonly string ABCMeshPath = $"{GeneratedAssetsFolder}/Meshes/ABCModels";
+    public static readonly string ABCPrefabPath = $"{GeneratedAssetsFolder}/Prefabs/ABCModels";
 
-    private static Material DefaultMaterial { get; set; }
+    public static readonly string BSPMeshPath = $"{GeneratedAssetsFolder}/Meshes/BSPModels";
+    public static readonly string BSPPrefabPath = $"{GeneratedAssetsFolder}/Prefabs/BSPModels";
 
-    [MenuItem("Tools/Testing")]
-    public static void Test()
+    public static Material MissingMaterial { get; set; }
+    public static Material InvisibleMaterial { get; set; }
+    public static Material CustomInvisibleMaterial { get; set; }
+
+    [MenuItem("Tools/Generate All Assets (fast)")]
+    public static void ExtractAllFast()
     {
-        //var unityDTXModels = GetAllUnityDTXModels();
-        var abcModels = GetABCModels();
-        //var sprModels = GetAllSPRModels();
-        //var datModels = GetAllDATModels();
-
-        var oilLamp = abcModels.Where(x => Path.GetFileNameWithoutExtension(x.RelativePathToABCFileLowercase) == "oillamp").FirstOrDefault();
-        float minY = oilLamp.Pieces.Min(piece => piece.LODs[0].Vertices.Min(vert => vert.Location.y));
-        float maxY = oilLamp.Pieces.Max(piece => piece.LODs[0].Vertices.Max(vert => vert.Location.y));
-
-        Debug.Log($"Min={minY}, Max={maxY}.");
+        ExtractAll(false);
     }
 
-    [MenuItem("Tools/Generate All Assets")]
-    public static void ExtractAll()
+    [MenuItem("Tools/Generate All Assets (slow - recreate)")]
+    public static void ExtractAllSlow()
+    {
+        ExtractAll(true);
+    }
+
+    public static void ExtractAll(bool alwaysCreate)
     {
         System.Diagnostics.Stopwatch totalWatch = System.Diagnostics.Stopwatch.StartNew();
         System.Diagnostics.Stopwatch watch = System.Diagnostics.Stopwatch.StartNew();
         string stats = "Beginning of extract all. Using project path: " + ProjectFolder + "\r\n";
-        if(!CreateDefaultMaterial())
+        if (!CreateDefaultMaterials())
         {
             return;
         }
+        stats += watch.GetElapsedTime("CreateDefaultMaterials\r\n", 1);
 
         CreateGeneratedPaths();
+        stats += watch.GetElapsedTime("CreateGeneratedPaths\r\n", 1);
 
-        stats += watch.GetElapsedTime("Create default material and create initial paths\r\n");
-        //if (GetVal()) { Debug.Log("Early out!"); return; }
+        TextureLookupUtility.SetLookups(alwaysCreate); stats += watch.GetElapsedTime("TextureLookupUtility.SetLookups\r\n", 1);
+        var datModels = GetAllDATModels(); stats += watch.GetElapsedTime("GetAllDATModels\r\n", 1);
+        var sprModels = GetAllSPRModels(); stats += watch.GetElapsedTime("GetAllSPRModels\r\n", 1);
+        MaterialLookupUtility.SetLookups(alwaysCreate, datModels, sprModels); stats += watch.GetElapsedTime("MaterialLookupUtility.SetLookups\r\n", 1);
 
-        // Step 1 - Load everything from the ProjectFolder
-        var unityDTXModels = GetAllUnityDTXModels();
-        stats += watch.GetElapsedTime($"Loaded DTX models (count={unityDTXModels.Count})\r\n");
         var abcModels = GetABCModels();
-        stats += watch.GetElapsedTime($"Loaded ABC models (count={abcModels.Count})\r\n");
-        var sprModels = GetAllSPRModels();
-        stats += watch.GetElapsedTime($"Loaded SPR models (count={sprModels.Count})\r\n");
-        var datModels = GetAllDATModels();
-        stats += watch.GetElapsedTime($"Loaded DAT models (count={datModels.Count})\r\n");
+        ABCMeshLookupUtility.SetLookups(alwaysCreate, abcModels); stats += watch.GetElapsedTime("ABCMeshLookupUtility.SetLookups\r\n", 1);
+        ABCPrefabLookupUtility.SetLookups(alwaysCreate, datModels, abcModels); stats += watch.GetElapsedTime("ABCLookupUtility.SetLookups\r\n", 1);
+        CreateAssetsFromDATModels(datModels); stats += watch.GetElapsedTime("CreateAssetsFromDATModels\r\n", 1);
 
-        //var s = "Clouds1 properties\r\n";
-        //var CULTOFTHESPIDER = datModels.FirstOrDefault(dat => Path.GetFileNameWithoutExtension(dat.Filename) == "CULTOFTHESPIDER");
-        //var matches = CULTOFTHESPIDER.WorldObjects.Where(wo => wo.ObjectType == "DemoSkyWorldModel").ToList();
-        //foreach (var match in matches)
-        //{
-        //    s += match.Name + Environment.NewLine;
-        //    foreach (var prop in match.Properties)
-        //    {
-        //        s += "\t" + prop + Environment.NewLine;
-        //    }
-        //    s += "\tIndex as float=" + match.Index.ToString() + Environment.NewLine;
-        //}
-        //Debug.Log(s);
-
-
-        //var s = "SkyBox properties\r\n";
-        //var rescueDAT = datModels.FirstOrDefault(dat => Path.GetFileNameWithoutExtension(dat.Filename) == "_RESCUEATTHERUINS");
-        //var blueWater = rescueDAT.WorldObjects.FirstOrDefault(wo => wo.Name == "SkyBox");
-        //foreach (var prop in blueWater.Properties)
-        //{
-        //    s += prop + Environment.NewLine;
-        //}
-        //Debug.Log(s);
-
-
-        var materialLookups = CreateTexturesAndMaterials(unityDTXModels, sprModels);
-        //var materialLookups = GetTexturesAndMaterials(unityDTXModels, sprModels);
-        stats += watch.GetElapsedTime($"Created all textures and materials\r\n");
-
-        // Step 2 - Create assets related to ABC models:
-        var abcReferenceModels = CreateAssetsFromABCModels(abcModels, datModels, materialLookups);
-        stats += watch.GetElapsedTime($"Created all ABC models and prefabs\r\n");
-
-        // Step 3 - Create assets for BSPs (from DATs)
-        CreateAssetsFromDATModels(abcModels, datModels, materialLookups, abcReferenceModels);
-        stats += watch.GetElapsedTime($"Created all DAT models and prefabs\r\n");
+        //stats += watch.GetElapsedTime($"Created all DAT models and prefabs\r\n");
 
         // Step 6 - Create meshes for BSPs (from DATs)
 
@@ -118,96 +84,16 @@ public class DataExtractor : EditorWindow
 
         //AssetDatabase.SaveAssets();
         stats += totalWatch.GetElapsedTime("Total Processing Time\r\n");
-        stats += "Done!!";
         Debug.Log(stats);
     }
 
-    /// <summary>
-    /// Create assets related to ABC models - the meshes and prefabs.
-    /// 
-    /// If an ABC is referenced by 1 or more DAT files then the skins referenced there will be used.
-    /// If more than one set of skins are referenced then multiple meshes and prefabs will be created.
-    /// For example:        
-    ///     DAT1 references model.ABC with Skins = "skins\a.dtx"
-    ///     DAT1 references model.ABC with Skins = "skins\b.dtx"
-    ///     DAT2 references model.ABC with Skins = "skins\xyz.dtx"
-    ///     3 meshes and prefabs will be created. A number is added to the name of the model for each unique "Skins" value.
-    ///         model1.abc
-    ///         model2.abc
-    ///         model3.abc
-    /// </summary>
-    /// <param name="abcModels"></param>
-    /// <param name="datModels"></param>
-    /// <param name="materialLookups"></param>
-    private static ABCReferenceModels CreateAssetsFromABCModels(List<ABCModel> abcModels, List<DATModel> datModels, Dictionary<string, MaterialLookupModel> materialLookups)
+    private static bool CreateDefaultMaterials()
     {
-        // Step 2a - Find skins (textures) for ABC Models
-        ABCReferenceModels abcReferenceModels = GetABCReferences(abcModels, datModels, materialLookups);
+        MissingMaterial = AssetDatabase.LoadAssetAtPath<Material>(MissingMaterialPath);
+        InvisibleMaterial = AssetDatabase.LoadAssetAtPath<Material>(InvisibleMaterialPath);
+        CustomInvisibleMaterial = AssetDatabase.LoadAssetAtPath<Material>(CustomInvisibleMaterialPath);
 
-        AssetDatabase.StartAssetEditing();
-
-        // Step 2c - Create meshes and prefabs.
-        // Only creates a prefab if there's a material referencing the ABCFile.
-        // Otherwise the mesh will be enough. Someone will have to apply a material later.
-        List<GameObject> gameObjectsToDestroy = new List<GameObject>();
-        gameObjectsToDestroy.AddRange(CreateABCPrefabs(abcReferenceModels.ABCWithSkinsModels, materialLookups));
-        gameObjectsToDestroy.AddRange(CreateABCPrefabs(abcReferenceModels.ABCWithSameNameMaterialModels));
-        gameObjectsToDestroy.AddRange(CreateABCPrefabs(abcReferenceModels.ABCModelsWithNoReferences));
-
-        int itemsCreated = gameObjectsToDestroy.Count;
-        foreach (var go in gameObjectsToDestroy)
-        {
-            DestroyImmediate(go);
-        }
-
-        RefreshAssetDatabase();
-
-        return abcReferenceModels;
-    }
-
-    private static ABCReferenceModels GetABCReferences(List<ABCModel> abcModels, List<DATModel> datModels, Dictionary<string, MaterialLookupModel> materialLookups)
-    {
-        // Get list of abcModels referenced by a DAT file. The DAT defines the "skins" for the ABC model.
-        var abcWithSkinsModels = GetABCWithSkins(abcModels, datModels);
-        var abcWithoutSkinsModels = abcModels.Where(
-            abcModel => !abcWithSkinsModels.Any(
-                abcWithSkinsModel => abcWithSkinsModel.ABCModel.RelativePathToABCFileLowercase == abcModel.RelativePathToABCFileLowercase))
-            .ToList();
-            
-        // Get list of abcModels that have a matching DTX/PNG by name.
-        // For example, If there's a file "cow.abc" that has no reference in any DAT or has no skins defined
-        // but there's a "cow.dtx" file, then match those up.
-        var materialModelList = materialLookups.Select(x => x.Value).ToList();
-        var abcModelsWithMatchingMaterial = abcWithoutSkinsModels.Select(
-            abcModel => new ABCWithSameNameMaterialModel
-            {
-                ABCModel = abcModel,
-                Material = materialModelList
-                    .Where(x => x.Name.ToLower() == abcModel.Name.ToLower())
-                    .Select(x => x.Material)
-                    .FirstOrDefault()
-            })
-            .Where(x => x.Material != null)
-            .ToList();
-
-        var abcModelsWithNoReferences = abcWithoutSkinsModels.Where(
-            abcWithoutSkinsModel => !abcModelsWithMatchingMaterial.Any(
-                x => x.ABCModel.Name.ToLower() == abcWithoutSkinsModel.Name.ToLower()))
-            .ToList();
-
-        return new ABCReferenceModels
-        {
-            ABCWithSkinsModels = abcWithSkinsModels,
-            ABCWithSameNameMaterialModels = abcModelsWithMatchingMaterial,
-            ABCModelsWithNoReferences = abcModelsWithNoReferences
-        };
-    }
-
-    private static bool CreateDefaultMaterial()
-    {
-        DefaultMaterial = AssetDatabase.LoadAssetAtPath<Material>(DefaultMaterialPath);
-
-        return DefaultMaterial != null;
+        return MissingMaterial != null && InvisibleMaterial != null && CustomInvisibleMaterial != null;
     }
 
     private static void CreateGeneratedPaths()
@@ -218,10 +104,9 @@ public class DataExtractor : EditorWindow
         Directory.CreateDirectory(ABCPrefabPath);
         Directory.CreateDirectory(BSPMeshPath);
         Directory.CreateDirectory(BSPPrefabPath);
-        Directory.CreateDirectory(ScenePath);
     }
 
-    private static List<ABCModel> GetABCModels()
+    protected static List<ABCModel> GetABCModels()
     {
         var abcFiles = Directory.GetFiles(ProjectFolder, "*.abc", SearchOption.AllDirectories);
         var abcModels = new List<ABCModel>();
@@ -244,7 +129,7 @@ public class DataExtractor : EditorWindow
         return abcModels;
     }
 
-    private static List<SPRModel> GetAllSPRModels()
+    protected static List<SPRModel> GetAllSPRModels()
     {
         var files = Directory.GetFiles(ProjectFolder, "*.spr", SearchOption.AllDirectories);
         var models = new List<SPRModel>();
@@ -268,7 +153,7 @@ public class DataExtractor : EditorWindow
         return models;
     }
 
-    private static List<UnityDTXModel> GetAllUnityDTXModels()
+    protected static List<UnityDTXModel> GetAllUnityDTXModels()
     {
         var files = Directory.GetFiles(ProjectFolder, "*.dtx", SearchOption.AllDirectories);
         var models = new List<UnityDTXModel>();
@@ -295,7 +180,7 @@ public class DataExtractor : EditorWindow
         return models;
     }
 
-    private static List<DATModel> GetAllDATModels()
+    protected static List<DATModel> GetAllDATModels()
     {
         var files = Directory.GetFiles(ProjectFolder, "*.dat", SearchOption.AllDirectories);
         var models = new List<DATModel>();
@@ -319,336 +204,18 @@ public class DataExtractor : EditorWindow
         return models;
     }
 
-    private static List<ABCWithSkinModel> GetABCWithSkins(List<ABCModel> abcModels, List<DATModel> datModels)
-    {
-        EditorUtility.DisplayProgressBar("Getting ABC filenames from DAT files", $"Getting WorldObject models", 0f);
-        var worldObjectModels = datModels.SelectMany(datModel => datModel.WorldObjects.Where(x => x.IsABC && x.SkinsLowercase.Count > 0)).ToList();
-
-        var uniqueWorldObjectModels = worldObjectModels
-            .GroupBy(g => new { g.FilenameLowercase, g.AllSkinsPathsLowercase })
-            .Select(g => g.First())
-            .ToList();
-
-        int i = 0;
-        var matchingABCModels = new List<ABCWithSkinModel>();
-        foreach (var abcModel in abcModels)
-        {
-            i++;
-            float progress = (float)i / abcModels.Count;
-            EditorUtility.DisplayProgressBar("Matching ABC models to ones used by DAT files", $"Item {i} of {abcModels.Count}", progress);
-
-            var matches = uniqueWorldObjectModels.Where(worldObjectModel => abcModel.RelativePathToABCFileLowercase == worldObjectModel.FilenameLowercase).ToList();
-            if (matches.Any())
-            {
-                var abcWithSkinModels = matches.Select(
-                    worldModel => new ABCWithSkinModel
-                    {
-                        ABCModel = abcModel,
-                        WorldObjectModel = worldModel
-                    });
-
-                matchingABCModels.AddRange(abcWithSkinModels);
-            }
-        }
-
-        // Make them distinct
-        var uniqueABCModels = matchingABCModels
-            .GroupBy(x => new { x.WorldObjectModel.AllSkinsPathsLowercase, x.ABCModel.RelativePathToABCFileLowercase })
-            .Select(g => g.First())
-            .ToList();
-
-        var nonUniqueABCNames = uniqueABCModels.GroupBy(x => new { x.ABCModel.Name })
-            .Where(x => x.Count() > 1)
-            .Select(x => x.First().ABCModel.Name)
-            .ToList();
-
-        foreach(var nonUniqueABCName in nonUniqueABCNames)
-        {
-            int index = 0;
-            foreach(var model in uniqueABCModels.Where(x => x.ABCModel.Name == nonUniqueABCName))
-            {
-                index++;
-                model.UniqueIndex = index;
-            }
-        }
-
-        return uniqueABCModels;
-    }
-
-    static void RefreshAssetDatabase(bool stopAssetEditing = true)
+    protected static void RefreshAssetDatabase(bool stopAssetEditing = true)
     {
         EditorUtility.DisplayProgressBar("Refreshing Assets", "Please wait while Unity updates the asset database...", 0.5f);
-
+        System.Threading.Thread.Sleep(50);
         if (stopAssetEditing)
         {
             AssetDatabase.StopAssetEditing();
         }
 
         AssetDatabase.Refresh();
+        System.Threading.Thread.Sleep(50);
         EditorUtility.ClearProgressBar();
-    }
-
-    private static Dictionary<string, MaterialLookupModel> CreateTextures(List<UnityDTXModel> unityDTXModels)
-    {
-        Dictionary<string, MaterialLookupModel> materialLookups = new Dictionary<string, MaterialLookupModel>(StringComparer.OrdinalIgnoreCase);
-
-        AssetDatabase.StartAssetEditing();
-        int i = 0;
-        foreach (var unityDTXModel in unityDTXModels)
-        {
-            i++;
-            float progress = (float)i / unityDTXModels.Count;
-            EditorUtility.DisplayProgressBar("Creating Textures", $"Item {i} of {unityDTXModels.Count}", progress);
-
-            // Create the PNG and get a few references to it.
-            var materialLookup = CreatePNG(unityDTXModel);
-            if (materialLookup != null)
-            {
-                materialLookups.Add(materialLookup.RelativeLookupPath, materialLookup);
-            }
-        }
-
-        RefreshAssetDatabase();
-
-        return materialLookups;
-    }
-
-    private static void CreateMaterials(Dictionary<string, MaterialLookupModel> materialLookups)
-    {
-        AssetDatabase.StartAssetEditing();
-
-        int i = 0;
-        foreach (var materialLookup in materialLookups.Values)
-        {
-            i++;
-            float progress = (float)i / materialLookups.Values.Count;
-            EditorUtility.DisplayProgressBar("Creating Materials", $"Item {i} of {materialLookups.Values.Count}", progress);
-
-            Texture2D texture2d = AssetDatabase.LoadAssetAtPath<Texture2D>(materialLookup.PathToPNG);
-
-            bool useFullBright = materialLookup.DTXModel.DTXModel.Header.UseFullBright;
-
-            Shader shader = Shader.Find(useFullBright ? "Universal Render Pipeline/Unlit" : "Universal Render Pipeline/Lit");
-            Material material = new Material(shader);
-            material.name = materialLookup.Name;
-            material.mainTexture = texture2d;
-            material.SetFloat("_Smoothness", 0f);
-            material.SetFloat("_BlendModePreserveSpecular", 0f);
-
-            if (materialLookup.DTXModel.TransparencyType == TransparencyTypes.NoTransparency)
-            {
-                material.SetFloat("_Surface", 0f); // 0 = Opaque, 1 = Transparent
-                material.SetOverrideTag("RenderType", "Opaque");
-                material.SetFloat("_AlphaClip", 0f); // enable alpha clipping
-                material.DisableKeyword("_ALPHATEST_ON");
-                material.renderQueue = (int)RenderQueue.Geometry;
-            }
-            else if (materialLookup.DTXModel.TransparencyType == TransparencyTypes.ClipOnly)
-            {
-                material.SetFloat("_Surface", 0f); // 0 = Opaque, 1 = Transparent
-                material.SetOverrideTag("RenderType", "Opaque");
-                material.SetFloat("_AlphaClip", 1f); // enable alpha clipping
-                material.SetFloat("_Cutoff", 0.5f);  // default threshold
-                material.EnableKeyword("_ALPHATEST_ON");
-                material.renderQueue = (int)RenderQueue.Transparent;
-            }
-            else if (materialLookup.DTXModel.TransparencyType == TransparencyTypes.BlendedTransparency)
-            {
-                material.SetFloat("_Surface", 1f); // 0 = Opaque, 1 = Transparent
-                material.SetOverrideTag("RenderType", "Transparent");
-                material.SetFloat("_Blend", 0);   // 0 = Alpha, 1 = Premultiply (keep it 0 for alpha)
-                material.SetFloat("_AlphaClip", 0f); // enable alpha clipping
-                material.DisableKeyword("_ALPHATEST_ON");
-                material.renderQueue = (int)RenderQueue.Transparent;
-            }
-
-            var pathToMaterial = Path.ChangeExtension(Path.Combine(MaterialPath, materialLookup.RelativeLookupPath), "mat").ConvertFolderSeperators();
-            Directory.CreateDirectory(Path.GetDirectoryName(pathToMaterial));
-
-            AssetDatabase.CreateAsset(material, pathToMaterial);
-            materialLookup.Material = AssetDatabase.LoadAssetAtPath<Material>(pathToMaterial);
-        }
-
-        RefreshAssetDatabase();
-
-        AssetDatabase.StartAssetEditing();
-        i = 0;
-        foreach (var materialLookup in materialLookups.Values)
-        {
-            i++;
-            float progress = (float)i / materialLookups.Values.Count;
-            EditorUtility.DisplayProgressBar("Refreshing Materials", $"Item {i} of {materialLookups.Values.Count}", progress);
-
-            var pathToMaterial = Path.ChangeExtension(Path.Combine(MaterialPath, materialLookup.RelativeLookupPath), "mat").ConvertFolderSeperators();
-            materialLookup.Material = AssetDatabase.LoadAssetAtPath<Material>(pathToMaterial);
-        }
-
-        RefreshAssetDatabase();
-    }
-
-    /// <summary>
-    /// This adds a sprite "path" to the dictionary so it will return the first DTX it finds.
-    /// </summary>
-    /// <param name="materialLookups"></param>
-    /// <param name="sprModels"></param>
-    private static void AddSpritePathsToMaterials(Dictionary<string, MaterialLookupModel> materialLookups, List<SPRModel> sprModels)
-    {
-        foreach (var sprModel in sprModels)
-        {
-            if (sprModel.DTXPaths == null || sprModel.DTXPaths.Length == 0)
-            {
-                continue;
-            }
-
-            var firstDTX = sprModel.DTXPaths[0];
-            if (materialLookups.ContainsKey(firstDTX))
-            {
-                // Add the sprite as a reference to the same material lookup
-                var materialLookup = materialLookups[firstDTX];
-                materialLookup.RelativeSpritePaths.Add(sprModel.RelativePathToSprite);
-                materialLookups.Add(sprModel.RelativePathToSprite, materialLookup);
-            }
-        }
-    }
-
-    private static void SetMaterialAlphaForBlendedTextures(Dictionary<string, MaterialLookupModel> materialLookups)
-    {
-        var pathToPNGs = materialLookups.Values
-            .Where(x => x.DTXModel.TransparencyType == TransparencyTypes.BlendedTransparency)
-            .Select(x => x.PathToPNG)
-            .Distinct()
-            .ToList();
-
-        foreach(var pathToPNG in pathToPNGs)
-        {
-            TextureImporter importer = AssetImporter.GetAtPath(pathToPNG) as TextureImporter;
-            if (importer != null)
-            {
-                importer.alphaIsTransparency = false;
-                importer.textureType = TextureImporterType.Default;
-                importer.alphaSource = TextureImporterAlphaSource.FromInput;
-                importer.SaveAndReimport();
-            }
-        }
-    }
-
-    private static Dictionary<string, MaterialLookupModel> CreateTexturesAndMaterials(List<UnityDTXModel> unityDTXModels, List<SPRModel> sprModels)
-    {
-        Dictionary<string, MaterialLookupModel> materialLookups = CreateTextures(unityDTXModels);
-
-        SetMaterialAlphaForBlendedTextures(materialLookups);
-
-        CreateMaterials(materialLookups);
-
-        AddSpritePathsToMaterials(materialLookups, sprModels);
-
-        return materialLookups;
-    }
-
-    private static MaterialLookupModel CreatePNG(UnityDTXModel unityDTXModel)
-    {
-        try
-        {
-            byte[] pngData = unityDTXModel.Texture2D.EncodeToPNG();
-            if (pngData == null || pngData.Length == 0)
-            {
-                if (ShowLogErrors)
-                {
-                    Debug.LogError($"Could not convert {unityDTXModel.DTXModel.RelativePathToDTX} to PNG!");
-                }
-
-                return null;
-            }
-
-            string texturePath = Path.GetDirectoryName(Path.Combine(TexturePath, unityDTXModel.DTXModel.RelativePathToDTX)).ConvertFolderSeperators();
-            Directory.CreateDirectory(texturePath);
-
-            string pngFilenameOnly = Path.GetFileNameWithoutExtension(unityDTXModel.DTXModel.RelativePathToDTX) + ".png";
-            string pathToPNG = Path.Combine(texturePath, pngFilenameOnly);
-            File.WriteAllBytes(pathToPNG, pngData);
-
-            return new MaterialLookupModel
-            {
-                DTXModel = unityDTXModel,
-                PathToPNG = pathToPNG,
-                Name = Path.GetFileNameWithoutExtension(unityDTXModel.DTXModel.RelativePathToDTX),
-                RelativeLookupPath = unityDTXModel.DTXModel.RelativePathToDTX.ConvertFolderSeperators()
-            };
-        }
-        catch (Exception ex)
-        {
-            if (ShowLogErrors)
-            {
-                Debug.LogError($"Error creating texture for {(unityDTXModel == null ? "<null>" : unityDTXModel.DTXModel.RelativePathToDTX)}: {ex.Message}");
-            }
-        }
-
-        return null;
-    }
-
-    private static Mesh CombineMeshes(List<Mesh> meshes)
-    {
-        CombineInstance[] combineInstances = new CombineInstance[meshes.Count];
-
-        for (int i = 0; i < meshes.Count; i++)
-        {
-            combineInstances[i].mesh = meshes[i];
-            combineInstances[i].transform = Matrix4x4.identity;
-        }
-
-        Mesh combinedMesh = new Mesh();
-        combinedMesh.CombineMeshes(combineInstances, true, true);
-
-        return combinedMesh;
-    }
-
-    private static Mesh CreateMesh(PieceModel piece, float yVertOffset)
-    {
-        List<Mesh> individualMeshes = new List<Mesh>();
-
-        var faces = piece.LODs[0].Faces;
-
-        // only use the first LOD, we don't care about the rest.
-        int faceIndex = 0;
-        foreach (FaceModel face in faces)
-        {
-            Mesh faceMesh = new Mesh();
-            List<Vector3> faceVertices = new List<Vector3>();
-            List<Vector3> faceNormals = new List<Vector3>();
-            List<Vector2> faceUV = new List<Vector2>();
-            List<int> faceTriangles = new List<int>();
-
-            foreach (FaceVertexModel faceVertex in face.Vertices)
-            {
-                int originalVertexIndex = faceVertex.VertexIndex;
-
-                // Add vertices, normals, and UVs for the current face
-                var vert = piece.LODs[0].Vertices[originalVertexIndex].Location * UnityScaleFactor;
-                var offset = new Vector3(0, yVertOffset, 0);
-                faceVertices.Add(vert - offset);
-                faceNormals.Add(piece.LODs[0].Vertices[originalVertexIndex].Normal);
-
-                Vector2 uv = new Vector2(faceVertex.Texcoord.x, faceVertex.Texcoord.y);
-                // Flip UV upside down - difference between Lithtech and Unity systems.
-                uv.y = 1f - uv.y;
-
-                faceUV.Add(uv);
-                faceTriangles.Add(faceVertices.Count - 1);
-            }
-
-            faceMesh.vertices = faceVertices.ToArray();
-            faceMesh.normals = faceNormals.ToArray();
-            faceMesh.uv = faceUV.ToArray();
-            faceMesh.triangles = faceTriangles.ToArray();
-
-            individualMeshes.Add(faceMesh);
-            faceIndex++;
-        }
-
-        // Combine all individual meshes into a single mesh
-        Mesh combinedMesh = CombineMeshes(individualMeshes);
-
-        return combinedMesh;
     }
 
     private static void AddColliders(GameObject rootObject)
@@ -656,42 +223,9 @@ public class DataExtractor : EditorWindow
         // Assign the mesh collider to the combined meshes
         foreach (var meshFilter in rootObject.GetComponentsInChildren<MeshFilter>())
         {
-            if (meshFilter.gameObject == rootObject)
-            {
-                continue;
-            }
-
             var meshCollider = meshFilter.transform.gameObject.AddComponent<MeshCollider>();
             meshCollider.sharedMesh = meshFilter.sharedMesh;
         }
-    }
-
-    private static GameObject CreateObjectFromABC(ABCModel abcModel, Material[] materials)
-    {
-        var rootObject = new GameObject(abcModel.Name);
-        rootObject.transform.position = Vector3.zero;
-        rootObject.transform.rotation = Quaternion.identity;
-        rootObject.transform.localScale = Vector3.one;
-
-        var lowestY = abcModel.Pieces.Min(piece => piece.LODs[0].Vertices.Min(vert => vert.Location.y)) * UnityScaleFactor;
-
-        foreach (var piece in abcModel.Pieces)
-        {
-            GameObject modelInGameObject = new GameObject(piece.Name);
-            modelInGameObject.transform.parent = rootObject.transform;
-            var meshFilter = modelInGameObject.AddComponent<MeshFilter>();
-            var meshRenderer = modelInGameObject.AddComponent<MeshRenderer>();
-            
-            meshFilter.sharedMesh = CreateMesh(piece, lowestY);
-            meshFilter.sharedMesh.RecalculateBounds();
-
-            meshRenderer.sharedMaterial = materials[piece.MaterialIndex];
-        }
-
-        rootObject.MeshCombine(true);
-        rootObject.tag = LithtechTags.NoRayCast;
-
-        return rootObject;
     }
 
     private static GameObject CreatePrefabFromABC(ABCModel abcModel, string nameSuffix, GameObject go, bool createPrefab)
@@ -722,186 +256,9 @@ public class DataExtractor : EditorWindow
         return null;
     }
 
-    private static Material[] GetMaterials(ABCModel abcModel, List<string> skins, Dictionary<string, MaterialLookupModel> materialLookups)
+    private static bool IsTextureCustomInvisible(string textureName, bool isSky, bool showSurface, bool visible)
     {
-        var materials = new Material[abcModel.GetMaxMaterialIndex() + 1];
-
-        int skinCount = skins?.Count ?? 0;
-        if (skinCount == 0)
-        {
-            for (int i = 0; i < materials.Length; i++)
-            {
-                materials[i] = DefaultMaterial;
-            }
-        }
-        else
-        {
-            for (int i = 0; i < materials.Length; i++)
-            {
-                string skin = i > skinCount - 1
-                    ? skins[skinCount - 1]
-                    : skins[i];
-
-                if (materialLookups.TryGetValue(skin, out MaterialLookupModel materialLookup))
-                {
-                    materials[i] = materialLookup.Material;
-                }
-                else
-                {
-                    materials[i] = DefaultMaterial;
-                }
-            }
-        }
-
-        return materials;
-    }
-
-    private static Material[] GetMaterials(ABCModel abcModel, Material material)
-    {
-        var materials = new Material[abcModel.GetMaxMaterialIndex() + 1];
-
-        for (int i = 0; i < materials.Length; i++)
-        {
-            materials[i] = material;
-        }
-
-        return materials;
-    }
-
-    private static List<GameObject> CreateABCPrefabs(List<ABCWithSkinModel> abcWithSkinsModels, Dictionary<string, MaterialLookupModel> materialLookups)
-    {
-        int i = 0;
-        List<GameObject> gameObjects = new List<GameObject>();
-        foreach (var abcWithSkinModel in abcWithSkinsModels)
-        {
-            i++;
-            float progress = (float)i / abcWithSkinsModels.Count;
-            EditorUtility.DisplayProgressBar("Creating ABC Prefabs with skins", $"Item {i} of {abcWithSkinsModels.Count}", progress);
-
-            Material[] materials = GetMaterials(abcWithSkinModel.ABCModel, abcWithSkinModel.WorldObjectModel.SkinsLowercase, materialLookups);
-            GameObject go = CreateObjectFromABC(abcWithSkinModel.ABCModel, materials);
-
-            string nameSuffix = (abcWithSkinModel.UniqueIndex != 0
-                ? abcWithSkinModel.UniqueIndex.ToString()
-                : string.Empty);
-            var prefab = CreatePrefabFromABC(abcWithSkinModel.ABCModel, nameSuffix, go, true);
-            abcWithSkinModel.Prefab = prefab;
-            gameObjects.Add(go);
-        }
-
-        EditorUtility.ClearProgressBar();
-
-        return gameObjects;
-    }
-
-    private static List<GameObject> CreateABCPrefabs(List<ABCWithSameNameMaterialModel> abcWithSameNameMaterialModels)
-    {
-        int i = 0;
-        List < GameObject > gameObjects = new List<GameObject>();
-        foreach (var abcWithSameNameMaterialModel in abcWithSameNameMaterialModels)
-        {
-            i++;
-            float progress = (float)i / abcWithSameNameMaterialModels.Count;
-            EditorUtility.DisplayProgressBar("Creating ABC Prefabs with matching PNG", $"Item {i} of {abcWithSameNameMaterialModels.Count}", progress);
-
-            Material[] materials = GetMaterials(abcWithSameNameMaterialModel.ABCModel, abcWithSameNameMaterialModel.Material);
-            GameObject go = CreateObjectFromABC(abcWithSameNameMaterialModel.ABCModel, materials);
-            var prefab = CreatePrefabFromABC(abcWithSameNameMaterialModel.ABCModel, string.Empty, go, true);
-            abcWithSameNameMaterialModel.Prefab = prefab;
-            gameObjects.Add(go);
-        }
-
-        EditorUtility.ClearProgressBar();
-
-        return gameObjects;
-    }
-
-    private static List<GameObject> CreateABCPrefabs(List<ABCModel> abcModels)
-    {
-        int i = 0;
-        List<GameObject> gameObjects = new List<GameObject>();
-        foreach (var abcModel in abcModels)
-        {
-            i++;
-            float progress = (float)i / abcModels.Count;
-            EditorUtility.DisplayProgressBar("Creating ABC Assets (no materials/skins)", $"Item {i} of {abcModels.Count}", progress);
-
-            Material[] materials = GetMaterials(abcModel, DefaultMaterial);
-            GameObject go = CreateObjectFromABC(abcModel, materials);
-
-            CreatePrefabFromABC(abcModel, string.Empty, go, false);
-            gameObjects.Add(go);
-        }
-
-        EditorUtility.ClearProgressBar();
-
-        return gameObjects;
-    }
-
-    private static bool IsVolume(BSPModel bspModel)
-    {
-        if (bspModel.WorldName.Contains("terrain", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        return (
-            bspModel.TextureNames[0].Contains("AI.dtx", StringComparison.OrdinalIgnoreCase) ||
-            bspModel.TextureNames[0].Contains("sound.dtx", StringComparison.OrdinalIgnoreCase) ||
-            bspModel.WorldName.Contains("volume", StringComparison.OrdinalIgnoreCase) ||
-            bspModel.WorldName.Contains("weather", StringComparison.OrdinalIgnoreCase) ||
-            bspModel.WorldName.Contains("rain", StringComparison.OrdinalIgnoreCase) ||
-            bspModel.WorldName.Contains("poison", StringComparison.OrdinalIgnoreCase) ||
-            bspModel.WorldName.Contains("corrosive", StringComparison.OrdinalIgnoreCase) ||
-            bspModel.WorldName.Contains("ladder", StringComparison.OrdinalIgnoreCase));
-    }
-
-    private static void SetTag(GameObject bspObject, BSPModel bspModel)
-    {
-        if (bspModel.WorldName == "PhysicsBSP")
-        {
-            bspObject.tag = LithtechTags.PhysicsBSP;
-        }
-        else if (IsVolume(bspModel))
-        {
-            bspObject.tag = LithtechTags.Volumes;
-        }
-        else if (bspModel.WorldName.Contains("AITrk", StringComparison.OrdinalIgnoreCase))
-        {
-            bspObject.tag = LithtechTags.AITrack;
-        }
-        else if (bspModel.WorldName.Contains("AIBarrier", StringComparison.OrdinalIgnoreCase))
-        {
-            bspObject.tag = LithtechTags.AIBarrier;
-        }
-        else if (bspObject.GetComponent<MeshFilter>() == null)
-        {
-            bspObject.tag = LithtechTags.MiscInvisible;
-        }
-        else
-        {
-            bspObject.tag = LithtechTags.NoRayCast;
-        }
-    }
-
-    private static bool IsTextureInvisible(string textureName, bool includeGlobaOpsNames, bool isSky, bool isInvisible)
-    {
-        if (isInvisible)
-        {
-            return true;
-        }
-
-        if (isSky)
-        {
-            return true;
-        }
-
-        if (string.IsNullOrEmpty(textureName))
-        {
-            return true;
-        }
-
-        if (textureName.Contains("invisible", StringComparison.OrdinalIgnoreCase))
+        if (isSky || (!showSurface && !visible))
         {
             return true;
         }
@@ -913,16 +270,6 @@ public class DataExtractor : EditorWindow
                || textureName.Contains("occluder.dtx", StringComparison.OrdinalIgnoreCase))
         {
             return true;
-        }
-
-        if (includeGlobaOpsNames)
-        {
-            if (textureName.Contains("sector.dtx", StringComparison.OrdinalIgnoreCase)
-               || textureName.Contains("Sound_Environment.dtx", StringComparison.OrdinalIgnoreCase)
-               || textureName.Contains("Useable.dtx", StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
         }
 
         return false;
@@ -964,7 +311,7 @@ public class DataExtractor : EditorWindow
         return surface;
     }
 
-    private static void CreateChildMeshes(WorldPolyModel poly, BSPModel bspModel, int index, Material material, WorldSurfaceModel surface, Transform parentTransform, TextureSizeModel textureSize)
+    private static void CreateChildMeshes(WorldPolyModel poly, BSPModel bspModel, int index, Material material, WorldSurfaceModel surface, Transform parentTransform)
     {
         // Convert OPQ to UV magic
         Vector3 center = poly.Center;
@@ -977,7 +324,6 @@ public class DataExtractor : EditorWindow
         p /= UnityScaleFactor;
         q /= UnityScaleFactor;
 
-        // CALCULATE EACH TRI INDIVIDUALLY.
         for (int nTriIndex = 0; nTriIndex < poly.LoVerts - 2; nTriIndex++)
         {
             Vector3[] vertexList = new Vector3[poly.LoVerts];
@@ -1016,8 +362,8 @@ public class DataExtractor : EditorWindow
                 float v = Vector3.Dot((curVert - center) - o, q);
 
                 //Scale back down into something more sane
-                u /= textureSize.EngineWidth;
-                v /= textureSize.EngineHeight;
+                u /= material.mainTexture.width;
+                v /= material.mainTexture.height;
 
                 var uv = new Vector2(u, v);
                 // Flip UV upside down - difference between Lithtech and Unity systems.
@@ -1046,16 +392,37 @@ public class DataExtractor : EditorWindow
         }
     }
 
-    private static void CreateBSPChildMeshes(BSPModel bspModel, GameObject bspObject, Dictionary<string, MaterialLookupModel> materialLookups)
+    private static GameObject CreateGameObject(string name, GameObject parent)
+    {
+        var gameObject = new GameObject(name);
+        gameObject.transform.parent = parent.transform;
+        MeshRenderer meshRenderer = gameObject.AddComponent<MeshRenderer>();
+        MeshFilter meshFilter = gameObject.AddComponent<MeshFilter>();
+        return gameObject;
+    }
+
+    private static bool CreateBSPChildMeshes(BSPModel bspModel, GameObject bspObject, WorldObjectModel worldObjectModel)
     {
         if (bspModel.Surfaces == null || bspModel.Surfaces.Count == 0)
         {
             Debug.Log($"Error creating BSP for DAT {bspObject.name}, BSP WorldName {bspModel.WorldName}. No surfaces found.");
-            return;
+            return false;
         }
+
+        float? surfaceAlpha = (worldObjectModel == null || worldObjectModel.WorldObjectType != WorldObjectTypes.VisibleVolume)
+            ? null
+            : worldObjectModel.SurfaceAlpha;
+
+        bool visible = worldObjectModel == null ? true : worldObjectModel.Visible;
+        bool showSurface = worldObjectModel == null ? true : worldObjectModel.ShowSurface || visible;
 
         int polyIndex = -1;
         List<string> missingTextures = new List<string>();
+        bool isPhysicsBSP = bspModel.WorldName == "PhysicsBSP";
+        GameObject missingMaterialGameObject = isPhysicsBSP ? CreateGameObject("MissingMaterial", bspObject) : null;
+        GameObject invisibleMaterialGameObject = isPhysicsBSP ? CreateGameObject("InvisibleMaterial", bspObject) : null;
+        GameObject customInvisibleMaterialGameObject = isPhysicsBSP ? CreateGameObject("CustomInvisible", bspObject) : null;
+        GameObject physicsBSPGameObject = isPhysicsBSP ? CreateGameObject("PhysicsBSP", bspObject) : null;
         foreach (WorldPolyModel poly in bspModel.Polies)
         {
             polyIndex++;
@@ -1066,60 +433,97 @@ public class DataExtractor : EditorWindow
             }
 
             var textureName = bspModel.TextureNames[surface.TextureIndex];
-            bool isSky = (surface.Flags & (int)BitMask.SKY) == (int)BitMask.SKY;
-            bool isTranslucent = (surface.Flags & (int)BitMask.TRANSLUCENT) == (int)BitMask.TRANSLUCENT;
-            bool isInvisible = (surface.Flags & (int)BitMask.INVISIBLE) == (int)BitMask.INVISIBLE;
+            Material material = GetMaterial(textureName, surface, surfaceAlpha, showSurface, visible);
 
-            if (IsTextureInvisible(textureName, false, isSky, isInvisible))
+            if (material == MissingMaterial)
             {
-                continue;
-            }
-
-            Material material;
-            TextureSizeModel textureSize;
-            if (materialLookups.TryGetValue(textureName, out MaterialLookupModel materialLookup))
-            {
-                // TODO: Create optional material with Chroma?
-                // Check if the material needs to add the Chroma flag - which requires (possibly) creating a new Material based on the original texture.
-                // May also update the tag of the mainObject
-                // material = AddAndGetChromaMaterialIfNeeded(matReference, bspModel.WorldName, isTranslucent, isInvisible, mainObject);
-                material = materialLookup.Material;
-                textureSize = materialLookup.DTXModel.TextureSize;
-            }
-            else
-            {
-                material = DefaultMaterial;
-                textureSize = new TextureSizeModel
-                {
-                    Width = material.mainTexture.width,
-                    EngineWidth = material.mainTexture.width,
-                    Height = material.mainTexture.height,
-                    EngineHeight = material.mainTexture.height
-                };
-                
                 missingTextures.Add(textureName);
             }
 
-            if (missingTextures.Count > 0)
+            GameObject parentObject;
+            if (!isPhysicsBSP)
             {
-                missingTextures = missingTextures.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-                var s = "BSP with missing textures:\r\n";
-                foreach(var missingTexture in missingTextures)
-                {
-                    s += $"\t{missingTexture}\r\n";
-                }
-
-                Debug.Log(s);
+                parentObject = bspObject;
             }
-            
-            CreateChildMeshes(poly, bspModel, polyIndex, material, surface, bspObject.transform, textureSize);
+            else
+            {
+                if (material == MissingMaterial)
+                {
+                    parentObject = missingMaterialGameObject;
+                }
+                else if (material == InvisibleMaterial)
+                {
+                    parentObject = invisibleMaterialGameObject;
+                }
+                else if (material == CustomInvisibleMaterial)
+                {
+                    parentObject = customInvisibleMaterialGameObject;
+                }
+                else
+                {
+                    parentObject = physicsBSPGameObject;
+                }
+            }
+
+            CreateChildMeshes(poly, bspModel, polyIndex, material, surface, parentObject.transform);
         }
+
+        if (missingTextures.Count > 0)
+        {
+            missingTextures = missingTextures.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            var s = $"BSP ({bspModel.WorldName}) has missing textures:\r\n";
+            foreach (var missingTexture in missingTextures)
+            {
+                s += $"\t{missingTexture}\r\n";
+            }
+
+            Debug.Log(s);
+        }
+
+        return isPhysicsBSP;
     }
 
-    private static void CreateBSPMeshAndPrefab(string name, GameObject go, List<GameObject> bspObjects)
+    private static Material GetMaterial(string textureName, WorldSurfaceModel surface, float? surfaceAlpha, bool showSurface, bool visible)
+    {
+        bool isInvisibleFlag = (surface.Flags & (int)BitMask.INVISIBLE) == (int)BitMask.INVISIBLE;
+        if (isInvisibleFlag)
+        {
+            return InvisibleMaterial;
+        }
+
+        if (string.IsNullOrEmpty(textureName))
+        {
+            return MissingMaterial;
+        }
+
+        bool isSky = (surface.Flags & (int)BitMask.SKY) == (int)BitMask.SKY;
+        if (IsTextureCustomInvisible(textureName, isSky, showSurface, visible))
+        {
+            return CustomInvisibleMaterial;
+        }
+
+        if (surfaceAlpha.HasValue)
+        {
+            var surfaceAlphaMaterial = UnityLookups.GetMaterial(textureName, surfaceAlpha.Value);
+            if (surfaceAlphaMaterial != null)
+            {
+                return surfaceAlphaMaterial;
+            }
+        }
+
+        var material = UnityLookups.GetMaterial(textureName);
+        if (material != null)
+        {
+            return material;
+        }
+
+        return MissingMaterial;
+    }
+
+    private static void CreateBSPMeshAndPrefab(GameObject datRootObject, List<GameObject> bspObjects)
     {
         // Save meshes
-        string baseMeshPath = Path.Combine(BSPMeshPath, name);
+        string baseMeshPath = Path.Combine(BSPMeshPath, datRootObject.name);
         Directory.CreateDirectory(baseMeshPath);
         foreach(var bspObject in bspObjects)
         {
@@ -1133,8 +537,8 @@ public class DataExtractor : EditorWindow
         }
 
         // Save prefab
-        string prefabPathAndFilename = Path.Combine(BSPPrefabPath, name + ".prefab");
-        var prefab = PrefabUtility.SaveAsPrefabAsset(go, prefabPathAndFilename);
+        string prefabPathAndFilename = Path.Combine(BSPPrefabPath, datRootObject.name + ".prefab");
+        var prefab = PrefabUtility.SaveAsPrefabAsset(datRootObject, prefabPathAndFilename);
     }
 
     private static void CombineMeshesPreserveMaterials(string datName, GameObject parent)
@@ -1173,6 +577,7 @@ public class DataExtractor : EditorWindow
 
             materialToCombine[mat].Add(combineInstance);
 
+            meshFilter.gameObject.hideFlags = HideFlags.HideAndDontSave;
             DestroyImmediate(meshFilter.gameObject);
         }
 
@@ -1205,11 +610,13 @@ public class DataExtractor : EditorWindow
         {
             if (parentMeshFilter != null)
             {
+                parentMeshFilter.hideFlags = HideFlags.HideAndDontSave;
                 DestroyImmediate(parentMeshFilter);
             }
 
             if (parentMeshRenderer != null)
             {
+                parentMeshRenderer.hideFlags = HideFlags.HideAndDontSave;
                 DestroyImmediate(parentMeshRenderer);
             }
         }
@@ -1224,77 +631,187 @@ public class DataExtractor : EditorWindow
         }
     }
 
-    private static GameObject CreateBSPObject(string name, BSPModel bspModel, Dictionary<string, MaterialLookupModel> materialLookups)
+    private static List<GameObject> CreateBSPObject(string datName, BSPModel bspModel, List<WorldObjectModel> worldObjectModels, Transform parentTransform)
     {
-        var bspObject = new GameObject(bspModel.WorldName);
-        bspObject.isStatic = true;
-        bspObject.AddComponent<MeshFilter>();
-        bspObject.AddComponent<MeshRenderer>().sharedMaterial = DefaultMaterial;
-
-        CreateBSPChildMeshes(bspModel, bspObject, materialLookups);
-        CombineMeshesPreserveMaterials(name, bspObject);
-        SetTag(bspObject, bspModel);
-
-        return bspObject;
-    }
-
-    private static List<GameObject> CreateBSPObjects(GameObject parent, string name, DATModel datModel, Dictionary<string, MaterialLookupModel> materialLookups)
-    {
-        int i = 0;
-        var bspObjects = new List<GameObject>();
-        foreach (var bspModel in datModel.BSPModels)
+        var matchingWorldObjectModel = worldObjectModels.FirstOrDefault(x => x.Name == bspModel.WorldName);
+        if (bspModel.WorldName != "PhysicsBSP" && matchingWorldObjectModel == null)
         {
-            i++;
-            float progress = (float)i / datModel.BSPModels.Count;
-            EditorUtility.DisplayProgressBar($"Creating BSP objects for {name}", $"Item {i} of {datModel.BSPModels.Count}", progress);
-
-            if (bspModel.WorldName.Contains("VisBSP", StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            GameObject bspObject = CreateBSPObject(name, bspModel, materialLookups);
-            bspObjects.Add(bspObject);
+            Debug.LogError($"BSP has no matching WorldObject: {bspModel.WorldName}");
         }
 
-        EditorUtility.DisplayProgressBar($"Grouping final BSP objects for {name}", $"Item {i} of {datModel.BSPModels.Count}", 99.9f);
+        var name = bspModel.WorldName;
+        var bspObject = new GameObject(name);
+        bspObject.transform.parent = parentTransform;
+        var bspComponent = bspObject.AddComponent<BSPObjectComponent>();
+        bspComponent.WorldObjectName = bspModel.WorldName;
+        bspComponent.WorldObjectType = matchingWorldObjectModel == null ? WorldObjectTypes.Unknown : matchingWorldObjectModel.WorldObjectType;
+        bspObject.isStatic = true;
+        bspObject.AddComponent<MeshFilter>();
+        bspObject.AddComponent<MeshRenderer>().sharedMaterial = MissingMaterial;
 
-        GroupBSPObjectsByTag(bspObjects, parent);
+        List<GameObject> gameObjects = new List<GameObject>();
+        if (CreateBSPChildMeshes(bspModel, bspObject, matchingWorldObjectModel))
+        {
+            // When this is PhysicsBSP, break into child groupings.
+            var children = GetChildren(bspObject);
+            Debug.Log($"PhysicsBSP: Found {children.Count} children");
+            foreach (var child in children)
+            {
+                CombineMeshesPreserveMaterials(datName, child);
+            }
+            gameObjects.AddRange(children);
+        }
+        else
+        {
+            CombineMeshesPreserveMaterials(datName, bspObject);
+            gameObjects.Add(bspObject);
+        }
 
-        AddColliders(parent);
+        if (ShouldCollide(matchingWorldObjectModel))
+        {
+            AddColliders(bspObject);
+        }
 
-        EditorUtility.ClearProgressBar();
-
-        return bspObjects;
+        return gameObjects;
     }
 
-    private static void GroupBSPObjectsByTag(List<GameObject> bspObjects, GameObject parent)
+    private static bool ShouldCollide(WorldObjectModel matchingWorldObjectModel)
     {
-        var taggedObjects = bspObjects.GroupBy(x => x.tag);
-        foreach (var taggedObject in taggedObjects)
+        // TTTT
+        return true;
+    }
+
+    private static bool ShouldHideObjectType(WorldObjectTypes type)
+    {
+        return type == WorldObjectTypes.InvisibleVolume ||
+            type == WorldObjectTypes.AIRail ||
+            type == WorldObjectTypes.AIBarrier ||
+            type == WorldObjectTypes.BuyZone ||
+            type == WorldObjectTypes.RescueZone ||
+            type == WorldObjectTypes.SoftLandingZone;
+    }
+
+    private static List<GameObject> GetChildren(GameObject parent, string excludeName = null)
+    {
+        var children = new List<GameObject>();
+        for (int i = 0; i < parent.transform.childCount; i++)
         {
-            GameObject tagObject = new GameObject(taggedObject.Key ?? "Untagged");
-            tagObject.transform.parent = parent.transform;
-
-            foreach (GameObject obj in taggedObject)
+            var child = parent.transform.GetChild(i).gameObject;
+            if (child.name != excludeName)
             {
-                obj.transform.parent = tagObject.transform;
+                children.Add(child);
+            }
+        }
+        
+        return children.OrderBy(x => x.name).ToList();
+    }
+
+    private static void GroupBSPObjects(GameObject rootBSPObject, Dictionary<string, GameObject> worldObjectLookups)
+    {
+        var bspObjects = GetChildren(rootBSPObject, excludeName:"PhysicsBSP");
+
+        var groups = bspObjects.GroupBy(x =>
+        {
+            var bspComponent = x.GetComponent<BSPObjectComponent>();
+            return bspComponent?.WorldObjectType.ToString() ?? x.name;
+        });
+
+        foreach (var grp in groups.OrderBy(x => x.Key))
+        {
+            GameObject parentGroupObject = new GameObject(grp.Key);
+            parentGroupObject.transform.parent = rootBSPObject.transform;
+
+            foreach (GameObject obj in grp)
+            {
+                obj.transform.parent = parentGroupObject.transform;
+
+                var bspComponent = obj.GetComponent<BSPObjectComponent>();
+
+                if (worldObjectLookups.TryGetValue(bspComponent.WorldObjectName, out var worldObjectGameObject))
+                {
+                    // Move the matching WorldObject to be a child of the BSP object.
+                    // The BSP has the mesh while the WorldObject has the properties about that object.
+                    worldObjectGameObject.transform.parent = obj.transform;
+                }
+                else
+                {
+                    Debug.LogError($"Found BSP with no matching WorldObject: {obj.name}");
+                }
             }
 
-            if (taggedObject.Key == LithtechTags.MiscInvisible || taggedObject.Key == LithtechTags.AIBarrier || taggedObject.Key == LithtechTags.AITrack)
+            if (ShouldHideObjectType(WorldObjectModelReader.GetWorldObjectType(grp.Key)))
             {
-                tagObject.SetActive(false);
+                parentGroupObject.SetActive(false);
             }
+        }
+    }
+
+    private static void GroupWorldObjects(GameObject rootWorldObject)
+    {
+        var worldObjectGameObjects = GetChildren(rootWorldObject);
+
+        var groups = worldObjectGameObjects.GroupBy(x =>
+        {
+            var worldObjectComponent = x.GetComponent<WorldObjectComponent>();
+            return worldObjectComponent?.WorldObjectType.ToString() ?? x.name;
+        });
+
+        foreach (var grp in groups.OrderBy(x => x.Key))
+        {
+            GameObject parentGroupObject = new GameObject(grp.Key);
+            parentGroupObject.transform.parent = rootWorldObject.transform;
+
+            foreach (GameObject obj in grp)
+            {
+                obj.transform.parent = parentGroupObject.transform;
+            }
+
+            if (ShouldHideObjectType(WorldObjectModelReader.GetWorldObjectType(grp.Key)))
+            {
+                parentGroupObject.SetActive(false);
+            }
+        }
+    }
+
+    private static void GroupObjects(GameObject rootBSPObject, GameObject rootWorldObject, Dictionary<string, GameObject> worldObjectLookups)
+    {
+        GroupBSPObjects(rootBSPObject, worldObjectLookups);
+        GroupWorldObjects(rootWorldObject);
+    }
+
+    private static List<GameObject> CreateBSPObjects(GameObject rootBSPObject, string name, DATModel datModel)
+    {
+        try
+        {
+            List<GameObject> gameObjects = new List<GameObject>();
+            int i = 0;
+            foreach (var bspModel in datModel.BSPModels.OrderBy(x => x.WorldName))
+            {
+                i++;
+                float progress = (float)i / datModel.BSPModels.Count;
+                EditorUtility.DisplayProgressBar($"Creating BSP objects for {name}", $"Item {i} of {datModel.BSPModels.Count}", progress);
+
+                if (bspModel.WorldName.Contains("VisBSP", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                gameObjects.AddRange(CreateBSPObject(name, bspModel, datModel.WorldObjects, rootBSPObject.transform));
+            }
+
+            EditorUtility.DisplayProgressBar($"Grouping final BSP objects for {name}", $"Item {i} of {datModel.BSPModels.Count}", 99.9f);
+            
+            return gameObjects;
+        }
+        finally
+        {
+            EditorUtility.ClearProgressBar();
         }
     }
 
     private static void ProcessWorldObject(WorldObjectModel obj)
     {
-        Vector3 rot = new Vector3();
         String objectName = String.Empty;
-        bool bInvisible = false;
-        bool bChromakey = false;
-
         var tempObject = new GameObject(obj.Name);
 
         //var tempObject = Instantiate(importer.RuntimeGizmoPrefab, objectPos, objectRot);
@@ -1696,129 +1213,82 @@ public class DataExtractor : EditorWindow
         g.transform.localScale = Vector3.one;
     }
 
-    private static bool NameMatches(string valueToCheck, params string[] names)
+    private static void AddWorldObjectComponent(GameObject gameObject, WorldObjectModel worldObjectModel)
     {
-        return names.Any(x => x.Equals(valueToCheck, StringComparison.OrdinalIgnoreCase));
+        var component = gameObject.AddComponent<WorldObjectComponent>();
+        component.ObjectType = worldObjectModel.ObjectType;
+        component.WorldObjectType = worldObjectModel.WorldObjectType;
+        component.SkyObjectName = worldObjectModel.SkyObjectName;
+        component.Position = worldObjectModel.Position.Value;
+        component.RotationInDegrees = worldObjectModel.RotationInDegrees.Value;
+        component.HasGravity = worldObjectModel.HasGravity ?? false;
+        component.MoveToFloor = worldObjectModel.MoveToFloor ?? false;
+        component.WeaponType = worldObjectModel.WeaponType;
+        component.Scale = worldObjectModel.Scale ?? 1f;
+        component.HasSurfaceAlpha = worldObjectModel.SurfaceAlpha.HasValue;
+        component.SurfaceAlpha = worldObjectModel.SurfaceAlpha ?? 0;
+        component.Filename = worldObjectModel.Filename;
+        component.IsABC = worldObjectModel.IsABC;
+        component.Skin = worldObjectModel.Skin;
+        component.Index = worldObjectModel.Index ?? 0;
+        component.Solid = worldObjectModel.Solid;
+        component.Visible = worldObjectModel.Visible;
+        component.Hidden = worldObjectModel.Hidden;
+        component.Rayhit = worldObjectModel.Rayhit;
+        component.Shadow = worldObjectModel.Shadow;
+        component.Transparent = worldObjectModel.Transparent;
+        component.ShowSurface = worldObjectModel.ShowSurface;
+        component.UseRotation = worldObjectModel.UseRotation;
+        component.SpriteSurfaceName = worldObjectModel.SpriteSurfaceName;
+        component.SurfaceColor1 = worldObjectModel.SurfaceColor1 ?? Vector3.zero;
+        component.SurfaceColor2 = worldObjectModel.SurfaceColor2 ?? Vector3.zero;
+        component.Viscosity = worldObjectModel.Viscosity ?? 0;
     }
 
-    private static bool NameMatchesMonster(string valueToCheck)
-    {
-        return NameMatches(valueToCheck, 
-            "Fish", "Bandit", "SkeletonWarrior", "Soldier", "Skeleton", "DragonFly", "Monk", "Troglodyte", "EvilEye", "Orc"
-            , "Spider2", "Dagrell", "Lich", "Goblin", "EvilEyeTerror", "Dwarf", "Wight", "ArcherBot", "Gargoyle", "Basilisk", "Spider"
-            , "Harpy", "Cow", "Goat", "LizardWarrior", "DruidBot", "Bird", "GolemStone", "Pig", "LichKing", "LizardMan", "Troll"
-            , "PaladinBot", "Zombie", "DragonRed", "Titan", "Duck", "Mummy", "Hen", "Bat", "Gopher", "Rooster", "Nobleman"
-            , "TitanGrand", "WarriorBot", "DwarfKing", "TownsFolkFemale", "TownsFolkGirl", "TownsFolkFemaleMid", "ElementalEarth", "Priest", "HereticBot");
-    }
-
-    private static WorldObjectTypes GetWorldObjectType(WorldObjectModel model)
-    {
-        if (NameMatches(model.ObjectType, "StaticSunLight", "GlowingLight", "DirLight", "ObjectLight"))
-        {
-            return WorldObjectTypes.Light;
-        }
-
-        if (NameMatches(model.ObjectType, "AIBarrier"))
-        {
-            return WorldObjectTypes.AIBarrier;
-        }
-
-        if (NameMatches(model.ObjectType, "AIRail"))
-        {
-            return WorldObjectTypes.AIRail;
-        }
-
-        if (NameMatches(model.ObjectType, "Prop", "WallTorch", "BagGold", "Brazier", "TreasureChest", "Torch", "CandleWall", "DestructableProp", "Candle", "Candelabra", "Chandelier", "PropDamager"))
-        {
-            return WorldObjectTypes.Prop;
-        }
-
-        if (NameMatches(model.ObjectType, "StartPoint"))
-        {
-            return WorldObjectTypes.StartPoint;
-        }
-
-        if (NameMatches(model.ObjectType, "AmbientSound", "Sound"))
-        {
-            return WorldObjectTypes.Sound;
-        }
-
-        if (NameMatches(model.ObjectType, "BuyZone"))
-        {
-            return WorldObjectTypes.BuyZone;
-        }
-
-        if (NameMatches(model.ObjectType, "RescueZone", "GoodKingRescueZone", "EvilKingRescueZone"))
-        {
-            return WorldObjectTypes.RescueZone;
-        }
-
-        if (NameMatches(model.ObjectType, "Teleporter", "PortalZone"))
-        {
-            return WorldObjectTypes.Teleporter;
-        }
-
-        if (NameMatches(model.ObjectType, "SwordInStone"))
-        {
-            return WorldObjectTypes.SwordInStone;
-        }
-
-        if (NameMatches(model.ObjectType, "WorldProperties"))
-        {
-            return WorldObjectTypes.WorldProperties;
-        }
-
-        if (NameMatches(model.ObjectType, "Princess"))
-        {
-            return WorldObjectTypes.Princess;
-        }
-
-        if (NameMatches(model.ObjectType, "SoftLandingZone"))
-        {
-            return WorldObjectTypes.SoftLandingZone;
-        }
-
-        if (NameMatches(model.ObjectType, "SpectatorStartPoint"))
-        {
-            return WorldObjectTypes.SpectatorStartPoint;
-        }
-
-        if (NameMatches(model.ObjectType, "EndlessFall"))
-        {
-            return WorldObjectTypes.EndlessFall;
-        }
-
-        if (NameMatches(model.ObjectType, "Fire", "BlueWater", "DirtyWater", "CorrosiveFluid", "ClearWater", "LiquidNitrogen", "ZeroGravity"))
-        {
-            return WorldObjectTypes.Volume;
-        }
-
-        if (NameMatchesMonster(model.ObjectType))
-        {
-            return WorldObjectTypes.Monster;
-        }
-
-        return WorldObjectTypes.Unknown;
-    }
-
-    private static void CreateABCPrefabFromWorldObject(GameObject prefab, WorldObjectModel worldObjectModel, GameObject rootWorldObject, string tag)
+    private static GameObject CreateABCPrefabFromWorldObject(GameObject prefab, WorldObjectModel worldObjectModel, GameObject rootWorldObject, string tag)
     {
         GameObject abcObject = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
-        abcObject.name = $"{worldObjectModel.Name} ({prefab.name})";
-        abcObject.transform.parent = rootWorldObject.transform;
-        var position = new Vector3(worldObjectModel.Position.X, worldObjectModel.Position.Y, worldObjectModel.Position.Z) * UnityScaleFactor;
-        abcObject.transform.position = position + WorldObjectOffset;
-        abcObject.transform.eulerAngles = new Vector3(worldObjectModel.Rotation.X * Mathf.Rad2Deg, worldObjectModel.Rotation.Y * Mathf.Rad2Deg, worldObjectModel.Rotation.Z * Mathf.Rad2Deg);
-        abcObject.tag = tag;
-        if (worldObjectModel.Scale != default(float) && worldObjectModel.Scale != 1f)
+        if (abcObject == null)
         {
-            abcObject.transform.localScale = Vector3.one * worldObjectModel.Scale;
+            Debug.Log($"CreateABCPrefabFromWorldObject - abcObject == null. WorldObjectModel={(worldObjectModel == null ? "null worldobjectmodel" : worldObjectModel.Name)}");
         }
 
-        if (worldObjectModel.MoveToFloor)
+        abcObject.name = $"{worldObjectModel.Name} (Type={worldObjectModel.ObjectType} | Model={prefab.name})";
+        abcObject.transform.parent = rootWorldObject.transform;
+        AddWorldObjectComponent(abcObject, worldObjectModel);
+
+        var worldObjectModelPosition = worldObjectModel.Position.Value  * UnityScaleFactor;
+
+        abcObject.transform.position = worldObjectModelPosition + WorldObjectOffset;
+        abcObject.transform.eulerAngles = worldObjectModel.RotationInDegrees.Value;
+        abcObject.tag = tag;
+        if (worldObjectModel.Scale.HasValue && worldObjectModel.Scale != 1f && worldObjectModel.Scale != 0f)
+        {
+            abcObject.transform.localScale = Vector3.one * worldObjectModel.Scale.Value;
+        }
+
+        if (worldObjectModel.MoveToFloor ?? false)
         {
             MoveDownToFloor(abcObject);
         }
+
+        return abcObject;
+    }
+
+    private static GameObject CreateGenericWorldObject(WorldObjectModel worldObjectModel, GameObject rootWorldObject, string tag)
+    {
+        GameObject gameObject = new GameObject();
+        gameObject.name = worldObjectModel.Name;
+        gameObject.transform.parent = rootWorldObject.transform;
+        AddWorldObjectComponent(gameObject, worldObjectModel);
+
+        var worldObjectModelPosition = worldObjectModel.Position.Value * UnityScaleFactor;
+
+        gameObject.transform.position = worldObjectModelPosition + WorldObjectOffset;
+        gameObject.transform.eulerAngles = worldObjectModel.RotationInDegrees.Value;
+        gameObject.tag = tag;
+
+        return gameObject;
     }
 
     private static void MoveObjectToGroundOrig(GameObject gameObject, RaycastHit hit)
@@ -1849,52 +1319,52 @@ public class DataExtractor : EditorWindow
         }
     }
 
-    private static void CreateWorldObjects(GameObject parent, string name, DATModel datModel, ABCReferenceModels abcReferenceModels)
+    private static Dictionary<string, GameObject> CreateWorldObjects(GameObject rootWorldObject, string name, DATModel datModel)
     {
-        // Create container object under the parent.
-        // All WorldObjects will be created under this.
-        GameObject rootWorldObject = new GameObject("WorldObjects");
-        rootWorldObject.transform.parent = parent.transform;
-
         int i = 0;
         var s = $"Creating WorldObjects for {name}\r\n";
-        foreach (var worldObjectModel in datModel.WorldObjects)
+        Dictionary<string, GameObject> worldObjectLookups = new Dictionary<string, GameObject>();
+        foreach (var worldObjectModel in datModel.WorldObjects.OrderBy(x => x.Name))
         {
             i++;
             float progress = (float)i / datModel.WorldObjects.Count;
             EditorUtility.DisplayProgressBar($"Creating World Objects for {name}", $"Item {i} of {datModel.WorldObjects.Count}", progress);
 
-            var worldObjectType = GetWorldObjectType(worldObjectModel);
             if (worldObjectModel.IsABC)
             {
                 if (worldObjectModel.SkinsLowercase.Count > 0)
                 {
                     // Try to find match on ABC model that has a matching skin used by this DAT's world object.
                     // The ABC model might be "banner.abc" but have different skins/textures applied.
-                    var matchingABCWithSkinsModel = abcReferenceModels.ABCWithSkinsModels.Where(x => x.ABCModel.RelativePathToABCFileLowercase == worldObjectModel.FilenameLowercase && x.WorldObjectModel.AllSkinsPathsLowercase == worldObjectModel.AllSkinsPathsLowercase).FirstOrDefault();
-                    if (matchingABCWithSkinsModel != null)
+                    var prefab = UnityLookups.GetABCPrefab(worldObjectModel.Filename, worldObjectModel.Skin);
+                    if (prefab != null)
                     {
-                        CreateABCPrefabFromWorldObject(matchingABCWithSkinsModel.Prefab, worldObjectModel, rootWorldObject, LithtechTags.NoRayCast);
+                        worldObjectLookups.Add(worldObjectModel.Name, CreateABCPrefabFromWorldObject(prefab, worldObjectModel, rootWorldObject, LithtechTags.NoRayCast));
                     }
                     else
                     {
-                        s += $"\tERROR - Object {worldObjectModel.Name} has ABCModel at path {worldObjectModel.Filename} but no matching skin for {worldObjectModel.SkinsLowercase}\r\n";
+                        s += $"\tERROR - Object {worldObjectModel.Name} has ABCModel at path {worldObjectModel.Filename} but no matching skin for {worldObjectModel.Skin}\r\n";
+                        worldObjectLookups.Add(worldObjectModel.Name, CreateGenericWorldObject(worldObjectModel, rootWorldObject, LithtechTags.NoRayCast));
                     }
                 }
                 else
                 {
                     // No Skins.
-                    // Just match on filename to a model that found a same-named texture.
-                    var matchingABCWithSameNameModel = abcReferenceModels.ABCWithSameNameMaterialModels.Where(x => x.ABCModel.RelativePathToABCFileLowercase == worldObjectModel.FilenameLowercase).FirstOrDefault();
-                    if (matchingABCWithSameNameModel != null)
+                    var prefab = UnityLookups.GetABCPrefab(worldObjectModel.Filename, string.Empty);
+                    if (prefab != null)
                     {
-                        CreateABCPrefabFromWorldObject(matchingABCWithSameNameModel.Prefab, worldObjectModel, rootWorldObject, LithtechTags.NoRayCast);
+                        worldObjectLookups.Add(worldObjectModel.Name, CreateABCPrefabFromWorldObject(prefab, worldObjectModel, rootWorldObject, LithtechTags.NoRayCast));
                     }
                     else
                     {
                         s += $"\tERROR - Object {worldObjectModel.Name} has filename but no skin(s) - could instantiate mesh if we want?\r\n";
+                        worldObjectLookups.Add(worldObjectModel.Name, CreateGenericWorldObject(worldObjectModel, rootWorldObject, LithtechTags.NoRayCast));
                     }
                 }
+            }
+            else
+            {
+                worldObjectLookups.Add(worldObjectModel.Name, CreateGenericWorldObject(worldObjectModel, rootWorldObject, LithtechTags.NoRayCast));
             }
 
             //ProcessWorldObject(worldObjectModel);
@@ -1905,6 +1375,8 @@ public class DataExtractor : EditorWindow
         // SetupAmbientLight();
 
         EditorUtility.ClearProgressBar();
+
+        return worldObjectLookups;
     }
 
     /// <summary>
@@ -1913,32 +1385,34 @@ public class DataExtractor : EditorWindow
     /// <param name="abcModels"></param>
     /// <param name="datModels"></param>
     /// <param name="materialLookups"></param>
-    private static int CreateAssetsFromDATModels(List<ABCModel> abcModels, List<DATModel> datModels, Dictionary<string, MaterialLookupModel> materialLookups, ABCReferenceModels abcReferenceModels)
+    private static int CreateAssetsFromDATModels(List<DATModel> datModels)
     {
         AssetDatabase.StartAssetEditing();
 
-        List<GameObject> gameObjectsToDestroy = new List<GameObject>();
         foreach (var datModel in datModels)
         {
             string name = Path.GetFileNameWithoutExtension(datModel.Filename);
-            //if (name != "_RESCUEATTHERUINS")
-            //{
-            //    continue;
-            //}
+            if (name != "DUNGEONRESCUE")
+            {
+                continue;
+            }
 
-            //Debug.Log($"Creating {name} from {datModel.Filename}");
-            GameObject rootObject = new GameObject(name);
-            var bspObjects = CreateBSPObjects(rootObject, name, datModel, materialLookups);
-            CreateWorldObjects(rootObject, name, datModel, abcReferenceModels);
+            GameObject datRootObject = new GameObject(name);
 
-            CreateBSPMeshAndPrefab(rootObject.name, rootObject, bspObjects);
+            var rootBSPObject = new GameObject("BSP");
+            rootBSPObject.transform.parent = datRootObject.transform;
+            var bspObjects = CreateBSPObjects(rootBSPObject, name, datModel);
 
-            gameObjectsToDestroy.Add(rootObject);
-        }
+            var rootWorldObject = new GameObject("WorldObjects");
+            rootWorldObject.transform.parent = datRootObject.transform;
+            var worldObjectLookups = CreateWorldObjects(rootWorldObject, name, datModel);
 
-        foreach (var go in gameObjectsToDestroy)
-        {
-            DestroyImmediate(go);
+            GroupObjects(rootBSPObject, rootWorldObject, worldObjectLookups);
+
+            CreateBSPMeshAndPrefab(datRootObject, bspObjects);
+
+            datRootObject.hideFlags = HideFlags.HideAndDontSave;
+            DestroyImmediate(datRootObject);
         }
 
         RefreshAssetDatabase();

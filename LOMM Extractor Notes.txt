@@ -3,16 +3,64 @@ LOMM Converter Notes
 ============================================================================================
 TODO:
 ============================================================================================
-	- Create versions of materials that have special transparency properties
-		Might be the same texture but different opacity?
-		Need naming translation convention so they can be created in one pass and found/referenced later
+	- Object height and misc placement is still an issue
+		Rescue - trees
+		Chateau - 4 horses
 		
-		No Alpha
-			No 
-		
-		Clipping only (like LICH)
-		
-		Transparent (like blue water)
+	- Water and texture to use:
+		The water mesh is a BSP object
+			The BSP might have a texture:
+				Rescue
+					BlueWater0		BSP 			1x:		TEXTURES\LevelTextures\Terrain\Ocean.dtx									<-- found 		good
+									WorldObject		Type = BlueWater		SpriteSurface = Sprites\Water\water123.spr 					<-- found		bad
+													
+				Wedding Day							
+					BlueWater0		BSP 			1x:		TEXTURES\LevelTextures\Misc\Invisible.dtx									<-- found		bad
+									WorldObject		Type = BlueWater		Sprites\water\Water115flowing.spr							<-- not found	bad
+					BlueWater1		BSP				1x		TEXTURES\LevelTextures\Misc\Invisible.dtx									<-- found		bad
+									WorldObject		Type = BlueWater		Sprites\water\Water115flowing.spr							<-- not found	bad
+					WorldObject12	BSP				2x:		Sprites\Water\Water115.spr 		TEXTURES\LevelTextures\Misc\Invisible.dtx	<-- found		good
+									WorldObject		Type = WorldObject		n/a															<-- not found	bad
+									
+				NOTES:
+					Sprites\water\Water115flowing.spr			<-- default value for SpriteSurfaceName when binding to BlueWater in DEdit
+					
+					DEdit:
+						Created brush: MyWaterBrush. Material doesn't seem to matter at all.
+						Bound to object "BlueWater". Creates:
+							BlueWaterThatWasBound		<-- SurfaceAlpha = 0.7 		|		SpriteSurfaceName = Sprites\water\Water115flowing.spr
+								MyWaterBrush			<- has texture applied. Tried SPR and grass.dtx. Neither showed in game.
+								
+						In DAT:
+							BlueWaterThatWasBound <- BSP object (makes sense) that has a texture (must have been merged during Process?)
+							Other brushes are not named. Presumably part of PhysicsBSP only (with appropriate textures).
+							
+							WorldObject named BlueWaterThatWasBound <- has the SurfaceAlpha and the SpriteSurfaceName
+							
+						
+								
+			
+	- Fix console logs:
+			Creating WorldObjects for _TEMPLEOFBARK
+				ERROR - Object LizardWarrior0 has filename but no skin(s) - could instantiate mesh if we want?
+				ERROR - Object LizardWarrior1 has filename but no skin(s) - could instantiate mesh if we want?
+				ERROR - Object LizardWarrior2 has filename but no skin(s) - could instantiate mesh if we want?
+				ERROR - Object LizardWarrior4 has filename but no skin(s) - could instantiate mesh if we want?
+				ERROR - Object LizardWarrior5 has filename but no skin(s) - could instantiate mesh if we want?
+			BSP with missing textures:
+				Default
+			BSP with missing textures:
+				TEXTURES\LevelTextures\WallsPlaster\GreyStoneWall.dtx
+	
+	
+	- Sort objects by name when creating GameObjects
+		- Put in type in the name
+	
+	- Use World property Transparent == true to setup material
+	
+	- Use "Rayhit" to decide if something should get a collision mesh
+	
+	- Create versions of materials that use SurfaceAlpha
 		
 	- Create items first then load into reference objects
 		Can skip the create later on
@@ -155,3 +203,29 @@ Recent Fixes:
 				Maybe shift everything down by UnityScaleFactor (as this is the equivalent of 1 unit)
 			
 			Height after adjustment to 0:	0.18548996
+
+	- Create versions of materials that have special transparency properties
+		Might be the same texture but different opacity?
+		Need naming translation convention so they can be created in one pass and found/referenced later
+		
+		No Alpha
+			All black or all white alpha channel in texture
+			Material:
+				Surface Type		Opaque
+				Alpha Clipping		Off
+		
+		Clipping only (like LICH)
+			All black or white alpha channel (no grey)
+			Material:
+				Surface Type		Opaque
+				Alpha Clipping		On
+		
+		Transparent (like blue water)
+			Some grey in alpha channel (no grey)
+			Material:
+				Surface Type		Transparent
+				Blending Mode		Alpha
+				Preserve Specular	Off
+				Alpha Clipping		Off
+				
+		NOTE: Texture never needs alphaIsTransparency = true ?

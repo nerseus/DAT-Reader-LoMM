@@ -257,7 +257,7 @@ public static class BSPModelReader
         for (int t = 0; t < verts; t++)
         {
             VertexColorModel vertexColors = new VertexColorModel();
-            vertexColors.VertexCount = (uint)binaryReader.ReadInt16();
+            vertexColors.VertexCount = binaryReader.ReadInt16();
             vertexColors.R = binaryReader.ReadByte();
             vertexColors.G = binaryReader.ReadByte();
             vertexColors.B = binaryReader.ReadByte();

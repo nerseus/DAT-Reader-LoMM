@@ -5,6 +5,8 @@ using UnityEngine;
 
 public static class ABCModelReader
 {
+    private static bool ShowError = false;
+
     private static Vector3 ReadVector3(BinaryReader reader)
     {
         return new Vector3(reader.ReadSingle(), reader.ReadSingle(), reader.ReadSingle());
@@ -84,6 +86,12 @@ public static class ABCModelReader
     private static PieceModel ReadPiece(int version, int lodCount, BinaryReader reader)
     {
         PieceModel piece = new PieceModel();
+
+        if (reader.BaseStream.Position + sizeof(ushort) > reader.BaseStream.Length)
+        {
+            return null;
+        }
+        
         piece.MaterialIndex = reader.ReadUInt16();
         piece.SpecularPower = reader.ReadSingle();
         piece.SpecularScale = reader.ReadSingle();
@@ -181,7 +189,18 @@ public static class ABCModelReader
                     model.Pieces = new List<PieceModel>();
                     for (int i = 0; i < nPiecesCount; i++)
                     {
-                        model.Pieces.Add(ReadPiece(model.Version, model.LODCount, reader));
+                        var piece = ReadPiece(model.Version, model.LODCount, reader);
+                        if (piece == null)
+                        {
+                            if (ShowError)
+                            {
+                                Debug.LogError($"Error while loading ABC file {filename}: Reached end of file too soon.");
+                            }
+
+                            return null;
+                        }
+
+                        model.Pieces.Add(piece);
                     }
                 }
             }
@@ -190,7 +209,11 @@ public static class ABCModelReader
         }
         catch (Exception ex)
         {
-            // Debug.LogError($"Error while loading ABC file {filename}: {ex.Message}");   
+            if (ShowError)
+            {
+                Debug.LogError($"Error while loading ABC file {filename}: {ex.Message}");
+            }
+
             return null;
         }
 

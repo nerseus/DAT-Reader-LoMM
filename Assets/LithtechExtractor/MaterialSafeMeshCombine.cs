@@ -110,6 +110,7 @@ namespace Utility
                     {
                         continue;
                     }
+
                     //Check if any children should be saved
                     for (int c = 0; c < meshFilters[i].transform.childCount; c++)
                     {
@@ -119,6 +120,7 @@ namespace Utility
                             toSave.Add(child);
                         }
                     }
+
                     //Move toSave children to root object
                     for (int s = 0; s < toSave.Count; s++)
                     {
@@ -139,7 +141,7 @@ namespace Utility
                     }
                     DestroyImmediate(meshFilters[i].GetComponent<MeshRenderer>());
                     DestroyImmediate(meshFilters[i]);
-                } 
+                }
             }
             gameObject.transform.position = originalPosition;
             gameObject.transform.rotation = originalRotation;

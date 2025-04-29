@@ -34,25 +34,6 @@ public static class DTXConverter
         return newTex;
     }
 
-    private static void ApplyMipMapOffset(DTXHeaderModel header, TextureSizeModel texInfo)
-    {
-        if (header.MipMapOffset == 1)
-        {
-            texInfo.EngineWidth /= 2;
-            texInfo.EngineHeight /= 2;
-        }
-        else if (header.MipMapOffset == 2)
-        {
-            texInfo.EngineWidth /= 4;
-            texInfo.EngineHeight /= 4;
-        }
-        else if (header.MipMapOffset == 3)
-        {
-            texInfo.EngineWidth /= 8;
-            texInfo.EngineHeight /= 8;
-        }
-    }
-
     private static TextureFormat GetTextureFormat(byte bytesPerPixel)
     {
         if (bytesPerPixel == (byte)DTXBPP.BPP_S3TC_DXT5) return TextureFormat.DXT5;
@@ -375,24 +356,10 @@ public static class DTXConverter
 
         var transparencyType = FlipTextureAndGetTransparencyType(convertedTexture2D);
 
-        TextureSizeModel textureSize = new TextureSizeModel
-        {
-            Width = model.Header.BaseWidth,
-            Height = model.Header.BaseHeight,
-            EngineWidth = model.Header.BaseWidth,
-            EngineHeight = model.Header.BaseHeight
-        };
-
-        if (model.Header.Version == DTXVersions.LT2)
-        {
-            ApplyMipMapOffset(model.Header, textureSize);
-        }
-
         var unityDTX = new UnityDTXModel
         {
             DTXModel = model,
             Texture2D = convertedTexture2D,
-            TextureSize = textureSize,
             TransparencyType = transparencyType
         };
 

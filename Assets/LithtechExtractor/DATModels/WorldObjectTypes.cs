@@ -16,6 +16,10 @@ public enum WorldObjectTypes
     SoftLandingZone,
     SpectatorStartPoint,
     EndlessFall,
-    Volume,
+    InvisibleVolume,
+    VisibleVolume,
+    Door,
+    MiscGeometry,
+    Skybox,
     Unknown
 }

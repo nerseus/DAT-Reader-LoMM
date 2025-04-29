@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine;
 
 public class ABCModel
 {
@@ -11,6 +12,7 @@ public class ABCModel
     public List<float> LODDistances { get; set; }
     public List<PieceModel> Pieces { get; set; }
     public string RelativePathToABCFileLowercase { get; set; }
+    public Material[] Materials { get; set; }
 
     public int GetMaterialCount()
     {
