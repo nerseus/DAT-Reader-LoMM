@@ -264,6 +264,24 @@ public class Testing : DataExtractor
         Debug.Log(s);
     }
 
+    private static void ShowStartPoints(List<DATModel> datModels)
+    {
+        foreach (var dat in datModels.Where(dat => Path.GetFileNameWithoutExtension(dat.Filename) == "_RESCUEATTHERUINS"))
+        {
+            string s = $"{dat.Filename}\r\n";
+            foreach (var wo in dat.WorldObjects.Where(wo => wo.ObjectType == "StartPoint"))
+            {
+                s += $"\t{wo.Name}\r\n";
+                foreach (var prop in wo.Properties)
+                {
+                    s += $"\t\t{prop}\r\n";
+                }
+            }
+
+            Debug.Log(s);
+        }
+    }
+
     [MenuItem("Tools/Test All")]
     public static void TestAll()
     {
@@ -292,6 +310,8 @@ public class Testing : DataExtractor
 
         //var abcModels = GetABCModels();
         //ShowModelsWithMultipleMaterials(abcModels);
-        ShowDuplicateWorldObjectNames(datModels);
+        //ShowDuplicateWorldObjectNames(datModels);
+
+        ShowStartPoints(datModels);
     }
 }

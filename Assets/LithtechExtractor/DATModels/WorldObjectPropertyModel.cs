@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using static LTTypes;
 
@@ -47,6 +48,14 @@ public class WorldObjectPropertyModel
 
     public override string ToString()
     {
-        return $"{Name} ({this.PropType}) = {Value}";
+        var s = $"{Name} ({this.PropType}) = {Value}";
+        if (this.PropType == PropType.UInt)
+        {
+            byte[] bytes = BitConverter.GetBytes(UIntValue);
+            float floatValue = BitConverter.ToSingle(bytes, 0);
+
+            s += $" (as float = {floatValue})";
+        }
+        return s;
     }
 }

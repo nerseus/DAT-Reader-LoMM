@@ -61,6 +61,8 @@ public class WorldObjectModel
     private Vector3? surfaceColor1;
     private Vector3? surfaceColor2;
     private float? viscosity;
+    private float teamNumber;
+    private float playerNumber;
 
     public string Name
     {
@@ -106,6 +108,8 @@ public class WorldObjectModel
     public Vector3? SurfaceColor1 { get { FlattenProperties(); return surfaceColor1; } }
     public Vector3? SurfaceColor2 { get { FlattenProperties(); return surfaceColor2; } }
     public float? Viscosity { get { FlattenProperties(); return viscosity; } }
+    public float PlayerNumber { get { FlattenProperties(); return playerNumber; } }
+    public float TeamNumber { get { FlattenProperties(); return teamNumber; } }
 
     private bool? GetBoolValue(string propName)
     {
@@ -121,7 +125,7 @@ public class WorldObjectModel
             : null;
     }
 
-    private float? GetUIntAsFloatValue(string propName)
+    private float? GetFloatValueFromUInt(string propName)
     {
         uint? tempVal = options.TryGetValue(propName, out var value) && value is uint uintVal
             ? uintVal
@@ -205,6 +209,8 @@ public class WorldObjectModel
         surfaceColor1 = GetVector3Value("SurfaceColor1");
         viscosity = GetFloatValue("Viscosity");
 
+        teamNumber = GetFloatValueFromUInt("TeamNbr") ?? 0f;
+        playerNumber = GetFloatValueFromUInt("PlayerNbr") ?? 0f;
 
         originalFilename = GetStringValue("Filename");
         if (originalFilename != null)
@@ -227,6 +233,6 @@ public class WorldObjectModel
             isABC = Path.GetExtension(filename).ToLower() == ".abc";
         }
 
-        index = GetUIntAsFloatValue("Index");
+        index = GetFloatValueFromUInt("Index");
     }
 }

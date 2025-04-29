@@ -31,5 +31,7 @@ namespace Utility
         public Vector3 SurfaceColor1;
         public Vector3 SurfaceColor2;
         public float Viscosity;
+        public float TeamNumber;
+        public float PlayerNumber;
     }
 }

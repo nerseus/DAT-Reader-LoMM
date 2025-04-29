@@ -646,6 +646,7 @@ public class DataExtractor : EditorWindow
         bspComponent.WorldObjectName = bspModel.WorldName;
         bspComponent.WorldObjectType = matchingWorldObjectModel == null ? WorldObjectTypes.Unknown : matchingWorldObjectModel.WorldObjectType;
         bspObject.isStatic = true;
+        SetBSPTag(bspObject, bspModel, matchingWorldObjectModel);
         bspObject.AddComponent<MeshFilter>();
         bspObject.AddComponent<MeshRenderer>().sharedMaterial = MissingMaterial;
 
@@ -672,6 +673,16 @@ public class DataExtractor : EditorWindow
         }
 
         return gameObjects;
+    }
+
+    private static void SetBSPTag(GameObject bspObject, BSPModel bspModel, WorldObjectModel matchingWorldObjectModel)
+    {
+        if (bspModel.WorldName == "PhysicsBSP" || matchingWorldObjectModel == null || matchingWorldObjectModel.Rayhit)
+        {
+            return;
+        }
+
+        bspObject.tag = LithtechTags.NoRayCast;
     }
 
     private static bool ShouldCollide(WorldObjectModel matchingWorldObjectModel)
@@ -1242,6 +1253,8 @@ public class DataExtractor : EditorWindow
         component.SurfaceColor1 = worldObjectModel.SurfaceColor1 ?? Vector3.zero;
         component.SurfaceColor2 = worldObjectModel.SurfaceColor2 ?? Vector3.zero;
         component.Viscosity = worldObjectModel.Viscosity ?? 0;
+        component.TeamNumber = worldObjectModel.TeamNumber;
+        component.PlayerNumber = worldObjectModel.PlayerNumber;
     }
 
     private static GameObject CreateABCPrefabFromWorldObject(GameObject prefab, WorldObjectModel worldObjectModel, GameObject rootWorldObject, string tag)
@@ -1413,6 +1426,10 @@ public class DataExtractor : EditorWindow
         foreach (var datModel in datModels)
         {
             string name = Path.GetFileNameWithoutExtension(datModel.Filename);
+            //if (name.ToUpper() != "CHATEAUESCAPE")
+            //{
+            //    continue;
+            //}
 
             GameObject datRootObject = new GameObject(name);
 

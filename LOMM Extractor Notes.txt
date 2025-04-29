@@ -3,74 +3,10 @@ LOMM Converter Notes
 ============================================================================================
 TODO:
 ============================================================================================
-	- Object height and misc placement is still an issue
-		Rescue - trees
-		Chateau - 4 horses
-		
-	- Water and texture to use:
-		The water mesh is a BSP object
-			The BSP might have a texture:
-				Rescue
-					BlueWater0		BSP 			1x:		TEXTURES\LevelTextures\Terrain\Ocean.dtx									<-- found 		good
-									WorldObject		Type = BlueWater		SpriteSurface = Sprites\Water\water123.spr 					<-- found		bad
-													
-				Wedding Day							
-					BlueWater0		BSP 			1x:		TEXTURES\LevelTextures\Misc\Invisible.dtx									<-- found		bad
-									WorldObject		Type = BlueWater		Sprites\water\Water115flowing.spr							<-- not found	bad
-					BlueWater1		BSP				1x		TEXTURES\LevelTextures\Misc\Invisible.dtx									<-- found		bad
-									WorldObject		Type = BlueWater		Sprites\water\Water115flowing.spr							<-- not found	bad
-					WorldObject12	BSP				2x:		Sprites\Water\Water115.spr 		TEXTURES\LevelTextures\Misc\Invisible.dtx	<-- found		good
-									WorldObject		Type = WorldObject		n/a															<-- not found	bad
-									
-				NOTES:
-					Sprites\water\Water115flowing.spr			<-- default value for SpriteSurfaceName when binding to BlueWater in DEdit
-					
-					DEdit:
-						Created brush: MyWaterBrush. Material doesn't seem to matter at all.
-						Bound to object "BlueWater". Creates:
-							BlueWaterThatWasBound		<-- SurfaceAlpha = 0.7 		|		SpriteSurfaceName = Sprites\water\Water115flowing.spr
-								MyWaterBrush			<- has texture applied. Tried SPR and grass.dtx. Neither showed in game.
-								
-						In DAT:
-							BlueWaterThatWasBound <- BSP object (makes sense) that has a texture (must have been merged during Process?)
-							Other brushes are not named. Presumably part of PhysicsBSP only (with appropriate textures).
-							
-							WorldObject named BlueWaterThatWasBound <- has the SurfaceAlpha and the SpriteSurfaceName
-							
-						
-								
-			
-	- Fix console logs:
-			Creating WorldObjects for _TEMPLEOFBARK
-				ERROR - Object LizardWarrior0 has filename but no skin(s) - could instantiate mesh if we want?
-				ERROR - Object LizardWarrior1 has filename but no skin(s) - could instantiate mesh if we want?
-				ERROR - Object LizardWarrior2 has filename but no skin(s) - could instantiate mesh if we want?
-				ERROR - Object LizardWarrior4 has filename but no skin(s) - could instantiate mesh if we want?
-				ERROR - Object LizardWarrior5 has filename but no skin(s) - could instantiate mesh if we want?
-			BSP with missing textures:
-				Default
-			BSP with missing textures:
-				TEXTURES\LevelTextures\WallsPlaster\GreyStoneWall.dtx
-	
-	
-	- Sort objects by name when creating GameObjects
-		- Put in type in the name
-	
-	- Use World property Transparent == true to setup material
+	- Can't run from scratch with materials - need to be reloaded.
 	
 	- Use "Rayhit" to decide if something should get a collision mesh
-	
-	- Create versions of materials that use SurfaceAlpha
 		
-	- Create items first then load into reference objects
-		Can skip the create later on
-		
-	- Transparency issues - some glass isn't working
-		Sword in the stone
-			Church window should be 2-sided?
-		
-	- Transparency issues - BlueWater0
-	
 	- Objects are mis-rotated:
 		Rescue Ruins
 			Bench0 (BENCH02)
@@ -78,34 +14,10 @@ TODO:
 		Blood Feud
 			WallTorch23 (TORCH21)	World rotation: Y = -180		Should be -90 	(-90 from given)
 			WallTorch52 (TORCH21)	World rotation: Y = 90.4		Should be 0 	(-90 from given)	- manually adjusting puts it inside the wall
+			
+		DragonBlade
+			Dragonpharoh0 (Type=Prop | Model=DRAGONPHAROAH)
 		
-	- Skybox mesh - replace with setting skybox on scene
-	
-	- Don't create prefabs for BSP meshes - just child meshes of main object
-	
-	- Better grouping of WorldObjects - use WorldObjectType
-	
-	- Add WorldObject monobehavior so the created objects can save their key properties
-	
-	- Fix:
-		Creating WorldObjects for _TEMPLEOFBARK
-			ERROR - Object LizardWarrior0 has filename but no skin(s) - could instantiate mesh if we want?
-			ERROR - Object LizardWarrior1 has filename but no skin(s) - could instantiate mesh if we want?
-			ERROR - Object LizardWarrior2 has filename but no skin(s) - could instantiate mesh if we want?
-			ERROR - Object LizardWarrior4 has filename but no skin(s) - could instantiate mesh if we want?
-			ERROR - Object LizardWarrior5 has filename but no skin(s) - could instantiate mesh if we want?
-	
-	- Create dummy materials pointing to default for missing strings.
-		BSP with missing textures:
-			TEXTURES\LevelTextures\Architex\Wall\BricksGranite.dtx
-			TEXTURES\LevelTextures\Architex\Wall\GraniteBlockGreen.dtx
-			TEXTURES\Met070.dtx
-			Default
-			TEXTURES\LevelTextures\E3demo\City\MetalBar.dtx
-			TEXTURES\LevelTextures\Architex\Floor\MarbleOctTileBrown.dtx
-
-	- AIRails are not tagged the same as AITrk
-	
 	- Create "game" script that will position player on a start node to make testing easier
 			
 	- Create Lights
@@ -132,10 +44,6 @@ TODO:
 				CustomModel (PT_STRING) = models\props\debris\urndebris.abc
 				BounceSound (PT_STRING) = 
 			
-	- Some props are not rotated or placed correctly?
-		Bloodfeud - Brazier6 and WallTorch23
-		Chateau Escape - 4 statues, 1 is on top of a pillar but 3 are not: Statue3 is good, Statue1, Statue2, Statue4 are floating
-
 ============================================================================================
 Notes:
 ============================================================================================
@@ -229,3 +137,60 @@ Recent Fixes:
 				Alpha Clipping		Off
 				
 		NOTE: Texture never needs alphaIsTransparency = true ?
+	- Water and texture to use:
+		The water mesh is a BSP object
+			The BSP might have a texture:
+				Rescue
+					BlueWater0		BSP 			1x:		TEXTURES\LevelTextures\Terrain\Ocean.dtx									<-- found 		good
+									WorldObject		Type = BlueWater		SpriteSurface = Sprites\Water\water123.spr 					<-- found		bad
+													
+				Wedding Day							
+					BlueWater0		BSP 			1x:		TEXTURES\LevelTextures\Misc\Invisible.dtx									<-- found		bad
+									WorldObject		Type = BlueWater		Sprites\water\Water115flowing.spr							<-- not found	bad
+					BlueWater1		BSP				1x		TEXTURES\LevelTextures\Misc\Invisible.dtx									<-- found		bad
+									WorldObject		Type = BlueWater		Sprites\water\Water115flowing.spr							<-- not found	bad
+					WorldObject12	BSP				2x:		Sprites\Water\Water115.spr 		TEXTURES\LevelTextures\Misc\Invisible.dtx	<-- found		good
+									WorldObject		Type = WorldObject		n/a															<-- not found	bad
+									
+				NOTES:
+					Sprites\water\Water115flowing.spr			<-- default value for SpriteSurfaceName when binding to BlueWater in DEdit
+					
+					DEdit:
+						Created brush: MyWaterBrush. Material doesn't seem to matter at all.
+						Bound to object "BlueWater". Creates:
+							BlueWaterThatWasBound		<-- SurfaceAlpha = 0.7 		|		SpriteSurfaceName = Sprites\water\Water115flowing.spr
+								MyWaterBrush			<- has texture applied. Tried SPR and grass.dtx. Neither showed in game.
+								
+						In DAT:
+							BlueWaterThatWasBound <- BSP object (makes sense) that has a texture (must have been merged during Process?)
+							Other brushes are not named. Presumably part of PhysicsBSP only (with appropriate textures).
+							
+							WorldObject named BlueWaterThatWasBound <- has the SurfaceAlpha and the SpriteSurfaceName
+							
+	- Fix console logs:
+			Creating WorldObjects for _TEMPLEOFBARK
+				ERROR - Object LizardWarrior0 has filename but no skin(s) - could instantiate mesh if we want?
+				ERROR - Object LizardWarrior1 has filename but no skin(s) - could instantiate mesh if we want?
+				ERROR - Object LizardWarrior2 has filename but no skin(s) - could instantiate mesh if we want?
+				ERROR - Object LizardWarrior4 has filename but no skin(s) - could instantiate mesh if we want?
+				ERROR - Object LizardWarrior5 has filename but no skin(s) - could instantiate mesh if we want?
+			BSP with missing textures:
+				Default
+			BSP with missing textures:
+				TEXTURES\LevelTextures\WallsPlaster\GreyStoneWall.dtx
+	- Create versions of materials that use SurfaceAlpha
+		
+	- Create items first then load into reference objects
+		Can skip the create later on
+
+	- Skybox mesh - replace with setting skybox on scene
+		- Manual for now
+
+	- Transparency issues - some glass isn't working
+		Sword in the stone
+			Church window should be 2-sided?
+		Manually fixing for now.
+		
+	- Better grouping of WorldObjects - use WorldObjectType
+
+	- Add WorldObject monobehavior so the created objects can save their key properties
