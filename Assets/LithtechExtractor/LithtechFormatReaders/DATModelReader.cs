@@ -101,6 +101,23 @@ public static class DATModelReader
             }
         }
 
+        datModel.WorldObjects.ForEach(x => x.UniqueName = x.Name);
+
+        var duplicateWorldObjects = datModel.WorldObjects
+            .GroupBy(x => x.Name)
+            .Where(x => x.Count() > 1)
+            .ToList();
+
+        foreach(var grp in duplicateWorldObjects)
+        {
+            var i = 1;
+            foreach (var worldObject in grp.Skip(1))
+            {
+                worldObject.UniqueName += $"_Unique{i}";
+                i++;
+            }
+        }
+
         return datModel;
     }
 }

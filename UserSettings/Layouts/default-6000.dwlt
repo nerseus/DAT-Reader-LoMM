@@ -74,7 +74,7 @@ MonoBehaviour:
   m_MinSize: {x: 200, y: 50}
   m_MaxSize: {x: 16192, y: 8096}
   vertical: 0
-  controlID: 87
+  controlID: 57
   draggingID: 0
 --- !u!114 &4
 MonoBehaviour:
@@ -376,7 +376,8 @@ MonoBehaviour:
     m_ShowAllHits: 0
     m_SkipHidden: 0
     m_SearchArea: 1
-    m_Folders: []
+    m_Folders:
+    - Assets/GeneratedAssets/Materials/TEXTURES/LEVELTEXTURES/WALLSPLASTER
     m_Globs: []
     m_ProductIds: 
     m_AnyWithAssetOrigin: 0
@@ -394,7 +395,7 @@ MonoBehaviour:
     scrollPos: {x: 0, y: 0}
     m_SelectedIDs: b2610000
     m_LastClickedID: 25010
-    m_ExpandedIDs: 0000000020000000220000003eed000040ed000042ed000044ed000046ed000048ed00004aed00004ced00004eed000050ed000052ed000054ed000056ed000058ed00005aed00005ced00005eed000060ed000062ed000064ed000066ed000068ed00006aed00006ced00006eed000070ed000072ed000074ed000076ed000078ed00007aed00007ced00007eed000080ed000082ed000084ed000086ed000088ed00008aed00008ced00008eed000090ed000092ed000094ed000096ed000098ed00009aed00009ced00009eed0000a0ed0000a2ed0000a4ed0000a6ed0000a8ed0000aaed0000aced0000aeed0000b0ed0000b2ed0000b4ed0000b6ed0000b8ed0000baed0000bced0000beed0000c0ed0000c2ed0000c4ed0000c6ed0000c8ed0000caed0000cced0000ceed0000d0ed0000d2ed0000d4ed0000d6ed0000
+    m_ExpandedIDs: 00000000200000002200000090cc000092cc000094cc000096cc000098cc00009acc00009ccc00009ecc0000a0cc0000a2cc0000a4cc0000a6cc0000a8cc0000aacc0000accc0000aecc0000b0cc0000b2cc0000b4cc0000b6cc0000b8cc0000bacc0000bccc0000becc0000c0cc0000c2cc0000c4cc0000c6cc0000c8cc0000cacc0000cccc0000cecc0000d0cc0000d2cc0000d4cc0000d6cc0000d8cc0000dacc0000dccc0000decc0000e0cc0000e2cc0000e4cc0000e6cc0000e8cc0000eacc0000eccc0000eecc0000f0cc0000f2cc0000f4cc0000f6cc0000f8cc0000facc0000fccc0000fecc000000cd000002cd000004cd000006cd000008cd00000acd00000ccd00000ecd000010cd000012cd000014cd000016cd000018cd00001acd00001ccd00001ecd000020cd000022cd000024cd000026cd000028cd00002acd00002ccd00002ecd000030cd000032cd000034cd000036cd000038cd0000
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -420,10 +421,10 @@ MonoBehaviour:
       m_Icon: {fileID: 0}
       m_ResourceFile: 
   m_AssetTreeState:
-    scrollPos: {x: 0, y: 12}
+    scrollPos: {x: 0, y: 0}
     m_SelectedIDs: 
     m_LastClickedID: 0
-    m_ExpandedIDs: 0000000020000000220000003eed000040ed000042ed000044ed000046ed000048ed00004aed00004ced00004eed000050ed000052ed000054ed000056ed000058ed00005aed00005ced00005eed000060ed000062ed000064ed000066ed000068ed00006aed00006ced00006eed000070ed000072ed000074ed000076ed000078ed00007aed00007ced00007eed000080ed000082ed000084ed000086ed000088ed00008aed00008ced00008eed000090ed000092ed000094ed000096ed000098ed00009aed00009ced00009eed0000a0ed0000a2ed0000a4ed0000a6ed0000a8ed0000aaed0000aced0000aeed0000b0ed0000b2ed0000b4ed0000b6ed0000b8ed0000baed0000bced0000beed0000c0ed0000c2ed0000c4ed0000c6ed0000c8ed0000caed0000cced0000ceed0000d0ed0000d2ed0000d4ed0000d6ed0000
+    m_ExpandedIDs: 00000000200000002200000090cc000092cc000094cc000096cc000098cc00009acc00009ccc00009ecc0000a0cc0000a2cc0000a4cc0000a6cc0000a8cc0000aacc0000accc0000aecc0000b0cc0000b2cc0000b4cc0000b6cc0000b8cc0000bacc0000bccc0000becc0000c0cc0000c2cc0000c4cc0000c6cc0000c8cc0000cacc0000cccc0000cecc0000d0cc0000d2cc0000d4cc0000d6cc0000d8cc0000dacc0000dccc0000decc0000e0cc0000e2cc0000e4cc0000e6cc0000e8cc0000eacc0000eccc0000eecc0000f0cc0000f2cc0000f4cc0000f6cc0000f8cc0000facc0000fccc0000fecc000000cd000002cd000004cd000006cd000008cd00000acd00000ccd00000ecd000010cd000012cd000014cd000016cd000018cd00001acd00001ccd00001ecd000020cd000022cd000024cd000026cd000028cd00002acd00002ccd00002ecd000030cd000032cd000034cd000036cd000038cd0000
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -571,7 +572,7 @@ MonoBehaviour:
       scrollPos: {x: 0, y: 0}
       m_SelectedIDs: 
       m_LastClickedID: 0
-      m_ExpandedIDs: fefaffff
+      m_ExpandedIDs: fcaff5ff46b5f5ffe0c8f5ffe4c8f5ffe8c8f5ffe0beffff
       m_RenameOverlay:
         m_UserAcceptedRename: 0
         m_Name: 
@@ -1119,9 +1120,9 @@ MonoBehaviour:
   m_AudioPlay: 0
   m_DebugDrawModesUseInteractiveLightBakingData: 0
   m_Position:
-    m_Target: {x: 38.312317, y: 6.401496, z: 47.750595}
+    m_Target: {x: 29.968801, y: 8.452745, z: -15.523088}
     speed: 2
-    m_Value: {x: 38.312317, y: 6.401496, z: 47.750595}
+    m_Value: {x: 29.968801, y: 8.452745, z: -15.523088}
   m_RenderMode: 0
   m_CameraMode:
     drawMode: 0
@@ -1167,13 +1168,13 @@ MonoBehaviour:
     m_GridAxis: 1
     m_gridOpacity: 0.5
   m_Rotation:
-    m_Target: {x: 0.21758649, y: -0.08679753, z: 0.011373242, w: 0.97560984}
+    m_Target: {x: -0.0068266373, y: -0.697408, z: 0.024362903, w: -0.7213531}
     speed: 2
-    m_Value: {x: -0.21758649, y: 0.08679753, z: -0.011373243, w: -0.97560984}
+    m_Value: {x: 0.0068266373, y: 0.697408, z: -0.024362901, w: 0.72135305}
   m_Size:
-    m_Target: 0.7386492
+    m_Target: 1.0230339
     speed: 2
-    m_Value: 0.7386492
+    m_Value: 1.0230339
   m_Ortho:
     m_Target: 0
     speed: 2

@@ -246,11 +246,29 @@ public class Testing : DataExtractor
         Debug.Log(s);
     }
 
+    private static void ShowDuplicateWorldObjectNames(List<DATModel> datModels)
+    {
+        var worldObjects = datModels.SelectMany(dat => dat.WorldObjects.Select(wo => new { dat.Filename, wo.Name })).ToList();
+
+        var duplicates = worldObjects.GroupBy(x => (x.Filename, x.Name))
+            .Where(g => g.Count() > 1)
+            .SelectMany(g => g)
+            .ToList();
+
+        string s = "Duplicate World Objects\r\n";
+        foreach (var item in duplicates)
+        {
+            s += $"\t{item.Filename} - {item.Name}\r\n";
+        }
+
+        Debug.Log(s);
+    }
+
     [MenuItem("Tools/Test All")]
     public static void TestAll()
     {
         //var sprModels = GetAllSPRModels();
-        //var datModels = GetAllDATModels();
+        var datModels = GetAllDATModels();
 
         //ShowObjectsWithProperty(datModels, "UseRotation", false, true);
         //ShowObjectsWithProperty(datModels, "Transparent", false, true, true, "False");
@@ -272,7 +290,8 @@ public class Testing : DataExtractor
 
         //ShowTexturesThatNeedSurfaceAlpha(datModels);
 
-        var abcModels = GetABCModels();
-        ShowModelsWithMultipleMaterials(abcModels);
+        //var abcModels = GetABCModels();
+        //ShowModelsWithMultipleMaterials(abcModels);
+        ShowDuplicateWorldObjectNames(datModels);
     }
 }

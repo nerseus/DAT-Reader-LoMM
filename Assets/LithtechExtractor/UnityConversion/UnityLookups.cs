@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
@@ -86,5 +87,12 @@ public static class UnityLookups
         }
 
         return null;
+    }
+
+    public static GameObject GetFirstMatchingABCPrefab(string relativePathToABC)
+    {
+        var match = ABCPrefabLookups.FirstOrDefault(grp => grp.Key.Item1.Equals(relativePathToABC, StringComparison.OrdinalIgnoreCase)).Value;
+
+        return match;
     }
 }

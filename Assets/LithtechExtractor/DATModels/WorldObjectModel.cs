@@ -7,7 +7,6 @@ using static LTTypes;
 public class WorldObjectModel
 {
     public Dictionary<string, object> options { get; set; } = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
-
     public List<WorldObjectPropertyModel> Properties { get; set; } = new List<WorldObjectPropertyModel>();
     public void AddProperty(PropType propType, string name, string val) { Properties.Add(new WorldObjectPropertyModel { StringValue = val, Name = name, PropType = propType }); }
     public void AddProperty(PropType propType, string name, Vector3 val) { Properties.Add(new WorldObjectPropertyModel { VectorValue = val, Name = name, PropType = propType }); }
@@ -16,6 +15,7 @@ public class WorldObjectModel
     public void AddProperty(PropType propType, string name, bool val) { Properties.Add(new WorldObjectPropertyModel { BoolValue = val, Name = name, PropType = propType }); }
     public void AddProperty(PropType propType, string name, LTRotation val) { Properties.Add(new WorldObjectPropertyModel { QuatValue = new Quaternion { w = val.W, x = val.X, y = val.Y, z = val.Z }, Name = name, PropType = propType }); }
 
+    public string UniqueName { get; set; }
     public string ObjectType { get; set; }
     public WorldObjectTypes WorldObjectType { get; set; }
     public short dataLength { get; set; }

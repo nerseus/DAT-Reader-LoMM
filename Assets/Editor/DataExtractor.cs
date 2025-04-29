@@ -6,7 +6,7 @@ using System.Linq;
 using System;
 using Utility;
 using UnityEngine.Rendering;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.TextBox;
+using System.Text.RegularExpressions;
 
 public class DataExtractor : EditorWindow
 {
@@ -35,6 +35,12 @@ public class DataExtractor : EditorWindow
 
     public static readonly string BSPMeshPath = $"{GeneratedAssetsFolder}/Meshes/BSPModels";
     public static readonly string BSPPrefabPath = $"{GeneratedAssetsFolder}/Prefabs/BSPModels";
+
+    public static readonly Dictionary<string, string> ABCMaps = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    {
+        { "models\\player\\king.abc", "models\\player\\goodking.abc" },
+        { "models\\lizardmanwarrior.abc", "models\\save\\lizardwarrior.abc" },
+    };
 
     public static Material MissingMaterial { get; set; }
     public static Material InvisibleMaterial { get; set; }
@@ -74,6 +80,7 @@ public class DataExtractor : EditorWindow
         var abcModels = GetABCModels();
         ABCMeshLookupUtility.SetLookups(alwaysCreate, abcModels); stats += watch.GetElapsedTime("ABCMeshLookupUtility.SetLookups\r\n", 1);
         ABCPrefabLookupUtility.SetLookups(alwaysCreate, datModels, abcModels); stats += watch.GetElapsedTime("ABCLookupUtility.SetLookups\r\n", 1);
+
         CreateAssetsFromDATModels(datModels); stats += watch.GetElapsedTime("CreateAssetsFromDATModels\r\n", 1);
 
         //stats += watch.GetElapsedTime($"Created all DAT models and prefabs\r\n");
@@ -419,10 +426,7 @@ public class DataExtractor : EditorWindow
         int polyIndex = -1;
         List<string> missingTextures = new List<string>();
         bool isPhysicsBSP = bspModel.WorldName == "PhysicsBSP";
-        GameObject missingMaterialGameObject = isPhysicsBSP ? CreateGameObject("MissingMaterial", bspObject) : null;
-        GameObject invisibleMaterialGameObject = isPhysicsBSP ? CreateGameObject("InvisibleMaterial", bspObject) : null;
-        GameObject customInvisibleMaterialGameObject = isPhysicsBSP ? CreateGameObject("CustomInvisible", bspObject) : null;
-        GameObject physicsBSPGameObject = isPhysicsBSP ? CreateGameObject("PhysicsBSP", bspObject) : null;
+        Dictionary<Material, GameObject> materialMaps = new Dictionary<Material, GameObject>();
         foreach (WorldPolyModel poly in bspModel.Polies)
         {
             polyIndex++;
@@ -447,37 +451,34 @@ public class DataExtractor : EditorWindow
             }
             else
             {
-                if (material == MissingMaterial)
+                if (materialMaps.TryGetValue(material, out var matGameObject))
                 {
-                    parentObject = missingMaterialGameObject;
-                }
-                else if (material == InvisibleMaterial)
-                {
-                    parentObject = invisibleMaterialGameObject;
-                }
-                else if (material == CustomInvisibleMaterial)
-                {
-                    parentObject = customInvisibleMaterialGameObject;
+                    parentObject = matGameObject;
                 }
                 else
                 {
-                    parentObject = physicsBSPGameObject;
+                    var newGameObject = CreateGameObject(material.name, bspObject);
+                    materialMaps.Add(material, newGameObject);
+                    parentObject = newGameObject;
                 }
             }
 
             CreateChildMeshes(poly, bspModel, polyIndex, material, surface, parentObject.transform);
         }
 
-        if (missingTextures.Count > 0)
+        if (ShowLogErrors)
         {
-            missingTextures = missingTextures.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-            var s = $"BSP ({bspModel.WorldName}) has missing textures:\r\n";
-            foreach (var missingTexture in missingTextures)
+            if (missingTextures.Count > 0)
             {
-                s += $"\t{missingTexture}\r\n";
-            }
+                missingTextures = missingTextures.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+                var s = $"BSP ({bspModel.WorldName}) has missing textures:\r\n";
+                foreach (var missingTexture in missingTextures)
+                {
+                    s += $"\t{missingTexture}\r\n";
+                }
 
-            Debug.Log(s);
+                Debug.Log(s);
+            }
         }
 
         return isPhysicsBSP;
@@ -654,7 +655,6 @@ public class DataExtractor : EditorWindow
         {
             // When this is PhysicsBSP, break into child groupings.
             var children = GetChildren(bspObject);
-            Debug.Log($"PhysicsBSP: Found {children.Count} children");
             foreach (var child in children)
             {
                 CombineMeshesPreserveMaterials(datName, child);
@@ -1336,35 +1336,57 @@ public class DataExtractor : EditorWindow
                 {
                     // Try to find match on ABC model that has a matching skin used by this DAT's world object.
                     // The ABC model might be "banner.abc" but have different skins/textures applied.
-                    var prefab = UnityLookups.GetABCPrefab(worldObjectModel.Filename, worldObjectModel.Skin);
+                    var prefab = UnityLookups.GetABCPrefab(worldObjectModel.FilenameLowercase, worldObjectModel.AllSkinsPathsLowercase);
                     if (prefab != null)
                     {
-                        worldObjectLookups.Add(worldObjectModel.Name, CreateABCPrefabFromWorldObject(prefab, worldObjectModel, rootWorldObject, LithtechTags.NoRayCast));
+                        worldObjectLookups.Add(worldObjectModel.UniqueName, CreateABCPrefabFromWorldObject(prefab, worldObjectModel, rootWorldObject, LithtechTags.NoRayCast));
                     }
                     else
                     {
-                        s += $"\tERROR - Object {worldObjectModel.Name} has ABCModel at path {worldObjectModel.Filename} but no matching skin for {worldObjectModel.Skin}\r\n";
-                        worldObjectLookups.Add(worldObjectModel.Name, CreateGenericWorldObject(worldObjectModel, rootWorldObject, LithtechTags.NoRayCast));
+                        s += $"\tERROR - Object {worldObjectModel.UniqueName} has ABCModel at path {worldObjectModel.FilenameLowercase} but no matching skin for {worldObjectModel.AllSkinsPathsLowercase}\r\n";
+                        worldObjectLookups.Add(worldObjectModel.UniqueName, CreateGenericWorldObject(worldObjectModel, rootWorldObject, LithtechTags.NoRayCast));
                     }
                 }
                 else
                 {
                     // No Skins.
-                    var prefab = UnityLookups.GetABCPrefab(worldObjectModel.Filename, string.Empty);
+                    var prefab = UnityLookups.GetABCPrefab(worldObjectModel.FilenameLowercase, string.Empty);
                     if (prefab != null)
                     {
-                        worldObjectLookups.Add(worldObjectModel.Name, CreateABCPrefabFromWorldObject(prefab, worldObjectModel, rootWorldObject, LithtechTags.NoRayCast));
+                        worldObjectLookups.Add(worldObjectModel.UniqueName, CreateABCPrefabFromWorldObject(prefab, worldObjectModel, rootWorldObject, LithtechTags.NoRayCast));
                     }
                     else
                     {
-                        s += $"\tERROR - Object {worldObjectModel.Name} has filename but no skin(s) - could instantiate mesh if we want?\r\n";
-                        worldObjectLookups.Add(worldObjectModel.Name, CreateGenericWorldObject(worldObjectModel, rootWorldObject, LithtechTags.NoRayCast));
+                        var ignoreSkinMatch = UnityLookups.GetFirstMatchingABCPrefab(worldObjectModel.FilenameLowercase);
+                        if (ignoreSkinMatch != null)
+                        {
+                            worldObjectLookups.Add(worldObjectModel.UniqueName, CreateABCPrefabFromWorldObject(ignoreSkinMatch, worldObjectModel, rootWorldObject, LithtechTags.NoRayCast));
+                        }
+                        else
+                        {
+                            bool found = false;
+                            if (ABCMaps.TryGetValue(worldObjectModel.FilenameLowercase, out var newName))
+                            {
+                                var mapMatch = UnityLookups.GetFirstMatchingABCPrefab(newName);
+                                if (mapMatch != null)
+                                {
+                                    found = true;
+                                    worldObjectLookups.Add(worldObjectModel.UniqueName, CreateABCPrefabFromWorldObject(mapMatch, worldObjectModel, rootWorldObject, LithtechTags.NoRayCast));
+                                }
+                            }
+
+                            if (!found)
+                            {
+                                s += $"\tERROR - World Object {worldObjectModel.UniqueName} has ABC filename ({worldObjectModel.FilenameLowercase}) and no skin(s) but could not instantiate\r\n";
+                                worldObjectLookups.Add(worldObjectModel.UniqueName, CreateGenericWorldObject(worldObjectModel, rootWorldObject, LithtechTags.NoRayCast));
+                            }
+                        }
                     }
                 }
             }
             else
             {
-                worldObjectLookups.Add(worldObjectModel.Name, CreateGenericWorldObject(worldObjectModel, rootWorldObject, LithtechTags.NoRayCast));
+                worldObjectLookups.Add(worldObjectModel.UniqueName, CreateGenericWorldObject(worldObjectModel, rootWorldObject, LithtechTags.NoRayCast));
             }
 
             //ProcessWorldObject(worldObjectModel);
@@ -1392,10 +1414,6 @@ public class DataExtractor : EditorWindow
         foreach (var datModel in datModels)
         {
             string name = Path.GetFileNameWithoutExtension(datModel.Filename);
-            if (name != "DUNGEONRESCUE")
-            {
-                continue;
-            }
 
             GameObject datRootObject = new GameObject(name);
 
