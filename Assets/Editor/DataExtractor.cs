@@ -6,11 +6,10 @@ using System.Linq;
 using System;
 using Utility;
 using UnityEngine.Rendering;
-using System.Text.RegularExpressions;
 
 public class DataExtractor : EditorWindow
 {
-    public static readonly bool BottomAlignABCModels = false;
+    public static readonly bool BottomAlignABCModels = true;
 
     public static readonly bool ShowLogErrors = false;
     public static readonly float UnityScaleFactor = 0.02f;

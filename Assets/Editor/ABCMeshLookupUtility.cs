@@ -17,7 +17,7 @@ public class ABCMeshLookupUtility : DataExtractor
         // Update UnityPathAndFilenameToPrefab on each model
         foreach (var assetFilename in assetFilenames)
         {
-            string relativePathToABC = Path.GetRelativePath(ABCMeshPath, assetFilename);
+            string relativePathToABC = Path.ChangeExtension(Path.GetRelativePath(ABCMeshPath, assetFilename), "abc");
             UnityLookups.ABCMeshLookups.Add(relativePathToABC, assetFilename);
         }
 
