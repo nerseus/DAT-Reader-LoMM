@@ -3,6 +3,10 @@ LOMM Converter Notes
 ============================================================================================
 TODO:
 ============================================================================================
+	- Create Lights
+	
+	- Create Sounds
+	
 	- Can't run from scratch with materials - need to be reloaded.
 	
 	- Use "Rayhit" to decide if something should get a collision mesh
@@ -17,13 +21,9 @@ TODO:
 			
 		DragonBlade
 			Dragonpharoh0 (Type=Prop | Model=DRAGONPHAROAH)
-		
-	- Create "game" script that will position player on a start node to make testing easier
 			
-	- Create Lights
-	
-	- Create Sounds
-	
+		Might be animation that turns the object then keeps it there til end of time?
+		
 	- Create Scene or maybe just prefab?
 	
 	- Sword in stone:
@@ -194,3 +194,6 @@ Recent Fixes:
 	- Better grouping of WorldObjects - use WorldObjectType
 
 	- Add WorldObject monobehavior so the created objects can save their key properties
+
+	- Create "game" script that will position player on a start node to make testing easier
+			

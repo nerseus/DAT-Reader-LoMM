@@ -25,7 +25,7 @@ public static class WorldObjectModelReader
 
     public static WorldObjectTypes GetWorldObjectType(string objectType)
     {
-        if (NameMatches(objectType, "StaticSunLight", "GlowingLight", "DirLight", "ObjectLight"))
+        if (NameMatches(objectType, "StaticSunLight", "GlowingLight", "DirLight", "ObjectLight", "Light"))
         {
             return WorldObjectTypes.Light;
         }
@@ -50,7 +50,7 @@ public static class WorldObjectModelReader
             return WorldObjectTypes.StartPoint;
         }
 
-        if (NameMatches(objectType, "AmbientSound", "Sound"))
+        if (NameMatches(objectType, "AmbientSound", "Sound", "SoundFX"))
         {
             return WorldObjectTypes.Sound;
         }

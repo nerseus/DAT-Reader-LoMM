@@ -13,6 +13,7 @@ public static class UnityLookups
     public static Dictionary<string, Material> MaterialLookups { get; set; } = new Dictionary<string, Material>(StringComparer.OrdinalIgnoreCase);
     public static Dictionary<string, string> ABCMeshLookups { get; set; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
     public static Dictionary<(string, string), GameObject> ABCPrefabLookups { get; set; } = new Dictionary<(string, string), GameObject>(new StringStringComparer());
+    public static Dictionary<string, AudioClip> AudioLookups { get; set; } = new Dictionary<string, AudioClip>(StringComparer.OrdinalIgnoreCase);
 
     private static void BuildMaterialByNameLookups()
     {
@@ -94,5 +95,15 @@ public static class UnityLookups
         var match = ABCPrefabLookups.FirstOrDefault(grp => grp.Key.Item1.Equals(relativePathToABC, StringComparison.OrdinalIgnoreCase)).Value;
 
         return match;
+    }
+
+    public static AudioClip GetAudioClip(string relativePathToWAV)
+    {
+        if (AudioLookups.TryGetValue(relativePathToWAV, out var audioClip))
+        {
+            return audioClip;
+        }
+
+        return null;
     }
 }

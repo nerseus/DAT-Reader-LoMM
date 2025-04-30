@@ -6,6 +6,10 @@ using System.Linq;
 using System;
 using Utility;
 using UnityEngine.Rendering;
+using UnityEditorInternal;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.Tab;
+using System.Collections;
+using UnityEngine.Networking;
 
 public class DataExtractor : EditorWindow
 {
@@ -27,6 +31,9 @@ public class DataExtractor : EditorWindow
     public static readonly string ProjectFolder = @"C:\temp\LOMMConverted\OriginalUnrezzed\";
 
     public static readonly string GeneratedAssetsFolder = "Assets/GeneratedAssets";
+
+    public static readonly string AudioClipPath = $"{GeneratedAssetsFolder}/AudioClips";
+
     public static readonly string TexturePath = $"{GeneratedAssetsFolder}/Textures";
     public static readonly string MaterialPath = $"{GeneratedAssetsFolder}/Materials";
 
@@ -72,6 +79,8 @@ public class DataExtractor : EditorWindow
         CreateGeneratedPaths();
         stats += watch.GetElapsedTime("CreateGeneratedPaths\r\n", 1);
 
+        AudioLookupUtility.SetLookups(alwaysCreate); stats += watch.GetElapsedTime("AudioLookupUtility.SetLookups\r\n", 1);
+
         TextureLookupUtility.SetLookups(alwaysCreate); stats += watch.GetElapsedTime("TextureLookupUtility.SetLookups\r\n", 1);
         var datModels = GetAllDATModels(); stats += watch.GetElapsedTime("GetAllDATModels\r\n", 1);
         var sprModels = GetAllSPRModels(); stats += watch.GetElapsedTime("GetAllSPRModels\r\n", 1);
@@ -98,12 +107,13 @@ public class DataExtractor : EditorWindow
 
     private static void CreateGeneratedPaths()
     {
-        Directory.CreateDirectory(ABCMeshPath);
         Directory.CreateDirectory(TexturePath);
         Directory.CreateDirectory(MaterialPath);
+        Directory.CreateDirectory(ABCMeshPath);
         Directory.CreateDirectory(ABCPrefabPath);
         Directory.CreateDirectory(BSPMeshPath);
         Directory.CreateDirectory(BSPPrefabPath);
+        Directory.CreateDirectory(AudioClipPath);
     }
 
     protected static List<ABCModel> GetABCModels()
@@ -226,34 +236,6 @@ public class DataExtractor : EditorWindow
             var meshCollider = meshFilter.transform.gameObject.AddComponent<MeshCollider>();
             meshCollider.sharedMesh = meshFilter.sharedMesh;
         }
-    }
-
-    private static GameObject CreatePrefabFromABC(ABCModel abcModel, string nameSuffix, GameObject go, bool createPrefab)
-    {
-        // Save mesh
-        var meshFilter = go.GetComponent<MeshFilter>();
-        var mesh = meshFilter.sharedMesh;
-        var relativePathToABC = Path.GetDirectoryName(abcModel.RelativePathToABCFileLowercase);
-        string meshPathAndFilename = Path.Combine(ABCMeshPath, relativePathToABC, abcModel.Name + nameSuffix + ".asset");
-        Directory.CreateDirectory(Path.GetDirectoryName(meshPathAndFilename));
-        AssetDatabase.CreateAsset(mesh, meshPathAndFilename);
-        
-        if (createPrefab)
-        {
-            // Force the load of the newly created/referenced asset.
-            AssetDatabase.ImportAsset(meshPathAndFilename);
-            mesh = AssetDatabase.LoadAssetAtPath<Mesh>(meshPathAndFilename);
-            meshFilter.sharedMesh = mesh;
-
-            // Save prefab
-            string prefabPathAndFilename = Path.Combine(ABCPrefabPath, relativePathToABC, abcModel.Name + nameSuffix + ".prefab");
-            Directory.CreateDirectory(Path.GetDirectoryName(prefabPathAndFilename));
-            PrefabUtility.SaveAsPrefabAsset(go, prefabPathAndFilename);
-            AssetDatabase.ImportAsset(prefabPathAndFilename);
-            return AssetDatabase.LoadAssetAtPath<GameObject>(prefabPathAndFilename);
-        }
-
-        return null;
     }
 
     private static bool IsTextureCustomInvisible(string textureName, bool isSky, bool showSurface, bool visible)
@@ -813,410 +795,6 @@ public class DataExtractor : EditorWindow
         }
     }
 
-    private static void ProcessWorldObject(WorldObjectModel obj)
-    {
-        String objectName = String.Empty;
-        var tempObject = new GameObject(obj.Name);
-
-        //var tempObject = Instantiate(importer.RuntimeGizmoPrefab, objectPos, objectRot);
-        //tempObject.name = objectName + "_obj";
-        //tempObject.transform.eulerAngles = rot;
-
-        if (obj.Name == "WorldProperties")
-        {
-            // TODO - Store WorldProperties somewhere?
-        }
-        else if (obj.Name == "SoundFX" || obj.Name == "AmbientSound")
-        {
-            //// TODO : Create sound
-            //AudioSource temp = tempObject.AddComponent<AudioSource>();
-            //var volumeControl = tempObject.AddComponent<Volume2D>();
-
-            //string szFilePath = String.Empty;
-
-            //foreach (var subItem in obj.options)
-            //{
-            //    if (subItem.Key == "Sound" || subItem.Key == "Filename")
-            //    {
-            //        szFilePath = Path.Combine(importer.szProjectPath, subItem.Value.ToString());
-            //    }
-
-            //    if (subItem.Key == "Loop")
-            //    {
-            //        temp.loop = (bool)subItem.Value;
-            //    }
-
-            //    if (subItem.Key == "Ambient")
-            //    {
-            //        if ((bool)subItem.Value)
-            //        {
-            //            temp.spatialize = false;
-            //        }
-            //        else
-            //        {
-            //            temp.spatialize = true;
-            //            temp.spatialBlend = 1.0f;
-            //        }
-            //    }
-
-            //    if (subItem.Key == "Volume")
-            //    {
-            //        float vol = (UInt32)subItem.Value;
-            //        temp.volume = vol / 100;
-            //    }
-            //    if (subItem.Key == "OuterRadius")
-            //    {
-            //        float vol = (float)subItem.Value;
-            //        temp.maxDistance = vol / 75;
-
-            //        volumeControl.audioSource = temp;
-            //        volumeControl.listenerTransform = Camera.main.transform;
-            //        volumeControl.maxDist = temp.maxDistance;
-            //    }
-            //}
-            //StartCoroutine(LoadAndPlay(szFilePath, temp));
-        }
-        else if (obj.Name == "TranslucentWorldModel" ||
-            obj.Name == "Electricity" ||
-            obj.Name == "Door")
-        {
-            // TODO - Handle TranslucentWorldModel
-            //string szObjectName = String.Empty;
-            //foreach (var subItem in obj.options)
-            //{
-            //    if (subItem.Key == "Visible")
-            //        bInvisible = (bool)subItem.Value;
-            //    else if (subItem.Key == "Chromakey")
-            //        bChromakey = (bool)subItem.Value;
-            //    else if (subItem.Key == "Name")
-            //        szObjectName = (String)subItem.Value;
-            //}
-
-            //var twm = tempObject.AddComponent<TranslucentWorldModel>();
-            //twm.bChromakey = bChromakey;
-            //twm.bVisible = bInvisible;
-            //twm.szName = szObjectName;
-        }
-        else if (obj.Name == "Light")
-        {
-            // TODO - Create Lights
-            ////find child gameobject named Icon
-            //var icon = tempObject.transform.Find("Icon");
-            //icon.GetComponent<MeshRenderer>().material.mainTexture = Resources.Load<Texture2D>("Gizmos/light");
-            //icon.gameObject.tag = LithtechTags.NoRayCast;
-            //icon.gameObject.layer = 7;
-
-            //var light = tempObject.gameObject.AddComponent<Light>();
-            //light.lightmapBakeType = LightmapBakeType.Baked;
-
-            //foreach (var subItem in obj.options)
-            //{
-            //    if (subItem.Key == "LightRadius")
-            //        light.range = (float)subItem.Value * 0.01f;
-
-            //    else if (subItem.Key == "LightColor")
-            //    {
-            //        var vec = (LTVector)subItem.Value;
-            //        Vector3 col = Vector3.Normalize(new Vector3(vec.X, vec.Y, vec.Z));
-            //        light.color = new Color(col.x, col.y, col.z);
-            //    }
-
-            //    else if (subItem.Key == "BrightScale")
-            //        light.intensity = (float)subItem.Value;
-            //}
-            //light.shadows = LightShadows.Soft;
-
-            //Controller lightController = transform.GetComponent<Controller>();
-
-            //foreach (var toggle in lightController.settingsToggleList)
-            //{
-            //    if (toggle.name == "Shadows")
-            //    {
-            //        if (toggle.isOn)
-            //            light.shadows = LightShadows.Soft;
-            //        else
-            //            light.shadows = LightShadows.None;
-            //    }
-            //}
-        }
-        else if (obj.Name == "DirLight")
-        {
-            // TODO Create Directional Light
-            ////find child gameobject named Icon
-            //var icon = tempObject.transform.Find("Icon");
-            //icon.GetComponent<MeshRenderer>().material.mainTexture = Resources.Load<Texture2D>("Gizmos/light");
-            //icon.gameObject.tag = LithtechTags.NoRayCast;
-            //icon.gameObject.layer = 7;
-            //var light = tempObject.gameObject.AddComponent<Light>();
-
-            //foreach (var subItem in obj.options)
-            //{
-            //    if (subItem.Key == "FOV")
-            //    {
-            //        light.innerSpotAngle = (float)subItem.Value;
-            //        light.spotAngle = (float)subItem.Value;
-            //    }
-
-            //    else if (subItem.Key == "LightRadius")
-            //        light.range = (float)subItem.Value * 0.01f;
-
-            //    else if (subItem.Key == "InnerColor")
-            //    {
-            //        var vec = (LTVector)subItem.Value;
-            //        Vector3 col = Vector3.Normalize(new Vector3(vec.X, vec.Y, vec.Z));
-            //        light.color = new Color(col.x, col.y, col.z);
-            //    }
-
-            //    else if (subItem.Key == "BrightScale")
-            //        light.intensity = (float)subItem.Value * 15;
-            //}
-
-            //light.shadows = LightShadows.Soft;
-            //light.type = LightType.Spot;
-
-            //Controller lightController = GetComponent<Controller>();
-
-            //foreach (var toggle in lightController.settingsToggleList)
-            //{
-            //    if (toggle.name == "Shadows")
-            //    {
-            //        if (toggle.isOn)
-            //            light.shadows = LightShadows.Soft;
-            //        else
-            //            light.shadows = LightShadows.None;
-            //    }
-            //}
-        }
-        else if (obj.Name == "StaticSunLight")
-        {
-            // TODO Create Static Sun Light.
-            ////find child gameobject named Icon
-            //var icon = tempObject.transform.Find("Icon");
-            //icon.GetComponent<MeshRenderer>().material.mainTexture = Resources.Load<Texture2D>("Gizmos/light");
-            //icon.gameObject.tag = LithtechTags.NoRayCast;
-            //icon.gameObject.layer = 7;
-            //var light = tempObject.gameObject.AddComponent<Light>();
-
-            //foreach (var subItem in obj.options)
-            //{
-            //    if (subItem.Key == "InnerColor")
-            //    {
-            //        var vec = (LTVector)subItem.Value;
-            //        Vector3 col = Vector3.Normalize(new Vector3(vec.X, vec.Y, vec.Z));
-            //        light.color = new Color(col.x, col.y, col.z);
-            //    }
-            //    else if (subItem.Key == "BrightScale")
-            //        light.intensity = (float)subItem.Value;
-            //}
-
-            //light.shadows = LightShadows.Soft;
-            //light.type = LightType.Directional;
-
-            //Controller lightController = GetComponent<Controller>();
-
-            //foreach (var toggle in lightController.settingsToggleList)
-            //{
-            //    if (toggle.name == "Shadows")
-            //    {
-            //        if (toggle.isOn)
-            //            light.shadows = LightShadows.Soft;
-            //        else
-            //            light.shadows = LightShadows.None;
-            //    }
-            //}
-        }
-        else if (obj.Name == "GameStartPoint")
-        {
-            // TODO Create GameStartPoint
-            //int nCount = ModelDefinition.AVP2RandomCharacterGameStartPoint.Length;
-
-            //int nRandom = UnityEngine.Random.Range(0, nCount);
-            //string szName = ModelDefinition.AVP2RandomCharacterGameStartPoint[nRandom];
-
-            //var temp = importer.CreateModelDefinition(szName, ModelType.Character, obj.options);
-            //var hasGravity = obj.options.ContainsKey("Gravity") ? (bool)obj.options["Gravity"] : false;
-            //var gos = modelToGameObject.LoadABC(temp, tempObject.transform, hasGravity);
-
-            //if (gos != null)
-            //{
-            //    gos.transform.position = tempObject.transform.position;
-            //    gos.transform.eulerAngles = rot;
-            //    gos.tag = LithtechTags.NoRayCast;
-            //}
-
-            ////find child gameobject named Icon
-            //var icon = tempObject.transform.Find("Icon");
-            //icon.GetComponent<MeshRenderer>().material.mainTexture = Resources.Load<Texture2D>("Gizmos/gsp");
-            //icon.gameObject.tag = LithtechTags.NoRayCast;
-            //icon.gameObject.layer = 7;
-        }
-        else if (obj.Name == "WeaponItem")
-        {
-            // TODO Create this
-            //string szName = "";
-
-            //if (obj.options.ContainsKey("WeaponType"))
-            //{
-            //    szName = (string)obj.options["WeaponType"];
-            //}
-
-            ////abc.FromFile("Assets/Models/" + szName + ".abc", true);
-
-            //var temp = importer.CreateModelDefinition(szName, ModelType.WeaponItem, obj.options);
-            //var hasGravity = obj.options.ContainsKey("Gravity") ? (bool)obj.options["Gravity"] : false;
-            //var gos = modelToGameObject.LoadABC(temp, tempObject.transform, hasGravity);
-
-            //if (gos != null)
-            //{
-            //    gos.transform.position = tempObject.transform.position;
-            //    gos.transform.eulerAngles = rot;
-            //    gos.tag = LithtechTags.NoRayCast;
-            //    gos.layer = 2;
-            //}
-        }
-        else if (obj.Name == "PropType" || obj.Name == "CProp")
-        {
-            // TODO Create this
-            //string szName = "";
-
-            //if (obj.options.ContainsKey("Name"))
-            //{
-            //    szName = (string)obj.options["Name"];
-            //}
-
-            //var temp = importer.CreateModelDefinition(szName, ModelType.PropType, obj.options);
-            //var hasGravity = obj.options.ContainsKey("Gravity") ? (bool)obj.options["Gravity"] : false;
-            //var gos = modelToGameObject.LoadABC(temp, tempObject.transform, hasGravity);
-
-            //if (gos != null)
-            //{
-            //    gos.transform.position = tempObject.transform.position;
-            //    gos.transform.eulerAngles = rot;
-            //    gos.tag = LithtechTags.NoRayCast;
-            //}
-        }
-        else if (obj.Name == "Prop" ||
-            obj.Name == "AmmoBox" ||
-            obj.Name == "Beetle" ||
-
-            //obj.objectName == "BodyProp" || // not implemented
-            obj.Name == "Civilian" ||
-            obj.Name == "Egg" ||
-            obj.Name == "HackableLock" ||
-            obj.Name == "Plant" ||
-            obj.Name == "StoryObject" ||
-            obj.Name == "MEMO" ||
-            obj.Name == "PC" ||
-            obj.Name == "PDA" ||
-            obj.Name == "Striker" ||
-            obj.Name == "TorchableLock" ||
-            obj.Name == "Turret" ||
-            obj.Name == "TreasureChest" ||
-            obj.Name == "Candle" ||
-            obj.Name == "CandleWall")
-        {
-            //string szName = "";
-
-            //if (obj.options.ContainsKey("Name"))
-            //{
-            //    szName = (string)obj.options["Name"];
-            //}
-
-            //var temp = importer.CreateModelDefinition(szName, ModelType.Prop, obj.options);
-            //var hasGravity = obj.options.ContainsKey("Gravity") ? (bool)obj.options["Gravity"] : false;
-            //var gos = modelToGameObject.LoadABC(temp, tempObject.transform, hasGravity);
-
-            //if (gos != null)
-            //{
-            //    gos.transform.position = tempObject.transform.position;
-            //    gos.transform.eulerAngles = rot;
-            //    gos.tag = LithtechTags.NoRayCast;
-
-            //    if (obj.options.ContainsKey("Scale"))
-            //    {
-            //        float scale = (float)obj.options["Scale"];
-            //        if (scale != 1f)
-            //        {
-            //            gos.transform.localScale = Vector3.one * scale;
-            //        }
-            //    }
-            //}
-        }
-        else if (obj.Name == "Princess")
-        {
-            //string szName = "";
-
-            //if (obj.options.ContainsKey("Name"))
-            //{
-            //    szName = (string)obj.options["Name"];
-            //}
-
-            //var temp = importer.CreateModelDefinition(szName, ModelType.Princess, obj.options);
-            //var hasGravity = obj.options.ContainsKey("Gravity") ? (bool)obj.options["Gravity"] : false;
-            //var gos = modelToGameObject.LoadABC(temp, tempObject.transform, hasGravity);
-
-            //if (gos != null)
-            //{
-            //    gos.transform.position = tempObject.transform.position;
-            //    gos.transform.eulerAngles = rot;
-            //    gos.tag = LithtechTags.NoRayCast;
-
-            //    if (obj.options.ContainsKey("Scale"))
-            //    {
-            //        float scale = (float)obj.options["Scale"];
-            //        if (scale != 1f)
-            //        {
-            //            gos.transform.localScale = Vector3.one * scale;
-            //        }
-            //    }
-            //}
-        }
-        else if (obj.Name == "Trigger")
-        {
-            //find child gameobject named Icon
-            var icon = tempObject.transform.Find("Icon");
-            icon.GetComponent<MeshRenderer>().material.mainTexture = Resources.Load<Texture2D>("Gizmos/trigger");
-            icon.gameObject.tag = LithtechTags.NoRayCast;
-            icon.gameObject.layer = 7;
-        }
-
-        // Generic Monster type - has a Filename but no skin
-        else if (obj.options.ContainsKey("Filename"))
-        {
-            //string szName = "";
-
-            //if (obj.options.ContainsKey("Name"))
-            //{
-            //    szName = (string)obj.options["Name"];
-            //}
-
-            //var temp = importer.CreateModelDefinition(szName, ModelType.Monster, obj.options);
-            //var hasGravity = obj.options.ContainsKey("Gravity") ? (bool)obj.options["Gravity"] : false;
-            //var gos = modelToGameObject.LoadABC(temp, tempObject.transform, hasGravity);
-
-            //if (gos != null)
-            //{
-            //    gos.transform.position = tempObject.transform.position;
-            //    gos.transform.eulerAngles = rot;
-            //    gos.tag = LithtechTags.NoRayCast;
-
-            //    if (obj.options.ContainsKey("Scale"))
-            //    {
-            //        float scale = (float)obj.options["Scale"];
-            //        if (scale != 1f)
-            //        {
-            //            gos.transform.localScale = Vector3.one * scale;
-            //        }
-            //    }
-            //}
-        }
-
-        var g = GameObject.Find("objects");
-        tempObject.transform.SetParent(g.transform);
-
-        g.transform.localScale = Vector3.one;
-    }
-
     private static void AddWorldObjectComponent(GameObject gameObject, WorldObjectModel worldObjectModel)
     {
         var component = gameObject.AddComponent<WorldObjectComponent>();
@@ -1251,7 +829,7 @@ public class DataExtractor : EditorWindow
         component.PlayerNumber = worldObjectModel.PlayerNumber;
     }
 
-    private static GameObject CreateABCPrefabFromWorldObject(GameObject prefab, WorldObjectModel worldObjectModel, GameObject rootWorldObject, string tag)
+    private static GameObject CreateABCPrefabFromWorldObject(GameObject prefab, WorldObjectModel worldObjectModel, Transform parentTransform, string tag)
     {
         GameObject abcObject = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
         if (abcObject == null)
@@ -1260,7 +838,7 @@ public class DataExtractor : EditorWindow
         }
 
         abcObject.name = $"{worldObjectModel.Name} (Type={worldObjectModel.ObjectType} | Model={prefab.name})";
-        abcObject.transform.parent = rootWorldObject.transform;
+        abcObject.transform.parent = parentTransform;
         AddWorldObjectComponent(abcObject, worldObjectModel);
 
         abcObject.transform.position = GetABCObjectLocation(worldObjectModel, abcObject);
@@ -1279,11 +857,11 @@ public class DataExtractor : EditorWindow
         return abcObject;
     }
 
-    private static GameObject CreateGenericWorldObject(WorldObjectModel worldObjectModel, GameObject rootWorldObject, string tag)
+    private static GameObject CreateGenericWorldObject(WorldObjectModel worldObjectModel, Transform parentTransform, string tag)
     {
         GameObject gameObject = new GameObject();
         gameObject.name = worldObjectModel.Name;
-        gameObject.transform.parent = rootWorldObject.transform;
+        gameObject.transform.parent = parentTransform;
         AddWorldObjectComponent(gameObject, worldObjectModel);
 
         var worldObjectModelPosition = worldObjectModel.Position.Value * UnityScaleFactor;
@@ -1322,6 +900,130 @@ public class DataExtractor : EditorWindow
         return worldObjectModelPosition + WorldObjectOffset;
     }
 
+    private static GameObject CreateWorldObjectABCInstance(WorldObjectModel worldObjectModel, Transform parentTransform)
+    {
+        if (worldObjectModel.SkinsLowercase.Count > 0)
+        {
+            // Try to find match on ABC model that has a matching skin used by this DAT's world object.
+            // The ABC model might be "banner.abc" but have different skins/textures applied.
+            var skinnedPrefab = UnityLookups.GetABCPrefab(worldObjectModel.FilenameLowercase, worldObjectModel.AllSkinsPathsLowercase);
+            if (skinnedPrefab != null)
+            {
+                return CreateABCPrefabFromWorldObject(skinnedPrefab, worldObjectModel, parentTransform, LithtechTags.NoRayCast);
+            }
+        }
+
+        // No Skins.
+        var prefab = UnityLookups.GetABCPrefab(worldObjectModel.FilenameLowercase, string.Empty);
+        if (prefab != null)
+        {
+            CreateABCPrefabFromWorldObject(prefab, worldObjectModel, parentTransform, LithtechTags.NoRayCast);
+        }
+
+        var ignoreSkinMatchPrefab = UnityLookups.GetFirstMatchingABCPrefab(worldObjectModel.FilenameLowercase);
+        if (ignoreSkinMatchPrefab != null)
+        {
+            CreateABCPrefabFromWorldObject(ignoreSkinMatchPrefab, worldObjectModel, parentTransform, LithtechTags.NoRayCast);
+        }
+
+        if (ABCMaps.TryGetValue(worldObjectModel.FilenameLowercase, out var newName))
+        {
+            var mapMatchPrefab = UnityLookups.GetFirstMatchingABCPrefab(newName);
+            if (mapMatchPrefab != null)
+            {
+                CreateABCPrefabFromWorldObject(mapMatchPrefab, worldObjectModel, parentTransform, LithtechTags.NoRayCast);
+            }
+        }
+
+        return null;
+    }
+
+    private static Color? GetNormalizedColor(Vector3? color)
+    {
+        if (color == null)
+        {
+            return null;
+        }
+
+        var normalizedColor = Vector3.Normalize(color.Value);
+        return new Color(normalizedColor.x, normalizedColor.y, normalizedColor.z);
+    }
+
+    private static GameObject CreateWorldObjectLightInstance(WorldObjectModel worldObjectModel, Transform parentTransform)
+    {
+        var gameObject = CreateGenericWorldObject(worldObjectModel, parentTransform, LithtechTags.NoRayCast);
+        var light = gameObject.AddComponent<Light>();
+
+        if (worldObjectModel.ObjectType == "Light" || worldObjectModel.ObjectType == "ObjectLight" || worldObjectModel.ObjectType == "GlowingLight")
+        {
+            light.shadows = LightShadows.Soft;
+            light.range = worldObjectModel.GetFloatPropValue("LightRadius") * UnityScaleFactor ?? light.range;
+            light.color = GetNormalizedColor(worldObjectModel.GetVector3PropValue("LightColor")) ?? light.color;
+            light.intensity = worldObjectModel.GetFloatPropValue("BrightScale") ?? light.intensity;
+        }
+        else if (worldObjectModel.ObjectType == "DirLight")
+        {
+            light.type = LightType.Spot;
+            light.shadows = LightShadows.Soft;
+            light.range = worldObjectModel.GetFloatPropValue("LightRadius") * UnityScaleFactor ?? light.range;
+            light.intensity = worldObjectModel.GetFloatPropValue("BrightScale") ?? light.intensity;
+            light.color = GetNormalizedColor(worldObjectModel.GetVector3PropValue("InnerColor")) ?? light.color;
+
+            var fov = worldObjectModel.GetFloatPropValue("FOV");
+            light.innerSpotAngle = fov ?? light.innerSpotAngle;
+            light.spotAngle = fov ?? light.spotAngle;
+        }
+        else if (worldObjectModel.ObjectType == "StaticSunLight")
+        {
+            light.type = LightType.Directional;
+            light.shadows = LightShadows.Soft;
+            light.intensity = worldObjectModel.GetFloatPropValue("BrightScale") ?? light.intensity;
+            light.color = GetNormalizedColor(worldObjectModel.GetVector3PropValue("InnerColor")) ?? light.color;
+        }
+
+        return gameObject;
+    }
+    
+    private static GameObject CreateWorldObjectSoundInstance(WorldObjectModel worldObjectModel, Transform parentTransform)
+    {
+        var clip = UnityLookups.GetAudioClip(worldObjectModel.Filename);
+        if (clip == null)
+        {
+            Debug.LogError($"Error creating WorldObject {worldObjectModel.Name} - could not find WAV (filename={worldObjectModel.Filename})");
+            return null;
+        }
+
+        var gameObject = CreateGenericWorldObject(worldObjectModel, parentTransform, LithtechTags.NoRayCast);
+        var audioSource = gameObject.AddComponent<AudioSource>();
+        audioSource.clip = clip;
+
+        audioSource.volume = ((float?)worldObjectModel.GetUIntPropValue("Volume")) / 100f ?? 1f;
+        audioSource.loop = worldObjectModel.GetBoolPropValue("Loop") ?? false;
+
+        bool isAmbient = worldObjectModel.GetBoolPropValue("Ambient") ?? false;
+        if (isAmbient)
+        {
+            audioSource.spatialize = false;
+            audioSource.spatialBlend = 1f;
+        }
+        else
+        {
+            audioSource.spatialize = true;
+        }
+
+        var outerRadius = worldObjectModel.GetFloatPropValue("OuterRadius");
+        if (outerRadius.HasValue)
+        {
+            audioSource.maxDistance = outerRadius.Value / 75f;
+
+            var volumeControl = gameObject.AddComponent<Volume2D>();
+            volumeControl.audioSource = audioSource;
+            volumeControl.maxDist = audioSource.maxDistance;
+        }
+
+        return gameObject;
+    }
+
     private static Dictionary<string, GameObject> CreateWorldObjects(GameObject rootWorldObject, string name, DATModel datModel)
     {
         int i = 0;
@@ -1333,64 +1035,34 @@ public class DataExtractor : EditorWindow
             float progress = (float)i / datModel.WorldObjects.Count;
             EditorUtility.DisplayProgressBar($"Creating World Objects for {name}", $"Item {i} of {datModel.WorldObjects.Count}", progress);
 
+            GameObject worldObjectGameObject = null;
+
+            // Check if the object has an ABC file reference - if so, we don't care about the type - just create the ABC instance and place it.
             if (worldObjectModel.IsABC)
             {
-                if (worldObjectModel.SkinsLowercase.Count > 0)
-                {
-                    // Try to find match on ABC model that has a matching skin used by this DAT's world object.
-                    // The ABC model might be "banner.abc" but have different skins/textures applied.
-                    var prefab = UnityLookups.GetABCPrefab(worldObjectModel.FilenameLowercase, worldObjectModel.AllSkinsPathsLowercase);
-                    if (prefab != null)
-                    {
-                        worldObjectLookups.Add(worldObjectModel.UniqueName, CreateABCPrefabFromWorldObject(prefab, worldObjectModel, rootWorldObject, LithtechTags.NoRayCast));
-                    }
-                    else
-                    {
-                        s += $"\tERROR - Object {worldObjectModel.UniqueName} has ABCModel at path {worldObjectModel.FilenameLowercase} but no matching skin for {worldObjectModel.AllSkinsPathsLowercase}\r\n";
-                        worldObjectLookups.Add(worldObjectModel.UniqueName, CreateGenericWorldObject(worldObjectModel, rootWorldObject, LithtechTags.NoRayCast));
-                    }
-                }
-                else
-                {
-                    // No Skins.
-                    var prefab = UnityLookups.GetABCPrefab(worldObjectModel.FilenameLowercase, string.Empty);
-                    if (prefab != null)
-                    {
-                        worldObjectLookups.Add(worldObjectModel.UniqueName, CreateABCPrefabFromWorldObject(prefab, worldObjectModel, rootWorldObject, LithtechTags.NoRayCast));
-                    }
-                    else
-                    {
-                        var ignoreSkinMatch = UnityLookups.GetFirstMatchingABCPrefab(worldObjectModel.FilenameLowercase);
-                        if (ignoreSkinMatch != null)
-                        {
-                            worldObjectLookups.Add(worldObjectModel.UniqueName, CreateABCPrefabFromWorldObject(ignoreSkinMatch, worldObjectModel, rootWorldObject, LithtechTags.NoRayCast));
-                        }
-                        else
-                        {
-                            bool found = false;
-                            if (ABCMaps.TryGetValue(worldObjectModel.FilenameLowercase, out var newName))
-                            {
-                                var mapMatch = UnityLookups.GetFirstMatchingABCPrefab(newName);
-                                if (mapMatch != null)
-                                {
-                                    found = true;
-                                    worldObjectLookups.Add(worldObjectModel.UniqueName, CreateABCPrefabFromWorldObject(mapMatch, worldObjectModel, rootWorldObject, LithtechTags.NoRayCast));
-                                }
-                            }
+                worldObjectGameObject = CreateWorldObjectABCInstance(worldObjectModel, rootWorldObject.transform);
+            }
 
-                            if (!found)
-                            {
-                                s += $"\tERROR - World Object {worldObjectModel.UniqueName} has ABC filename ({worldObjectModel.FilenameLowercase}) and no skin(s) but could not instantiate\r\n";
-                                worldObjectLookups.Add(worldObjectModel.UniqueName, CreateGenericWorldObject(worldObjectModel, rootWorldObject, LithtechTags.NoRayCast));
-                            }
-                        }
-                    }
-                }
-            }
-            else
+            // Create an object based on the type
+            if (worldObjectGameObject == null)
             {
-                worldObjectLookups.Add(worldObjectModel.UniqueName, CreateGenericWorldObject(worldObjectModel, rootWorldObject, LithtechTags.NoRayCast));
+                switch (worldObjectModel.WorldObjectType)
+                {
+                    case WorldObjectTypes.Light:
+                        worldObjectGameObject = CreateWorldObjectLightInstance(worldObjectModel, rootWorldObject.transform);
+                        break;
+                    case WorldObjectTypes.Sound:
+                        worldObjectGameObject = CreateWorldObjectSoundInstance(worldObjectModel, rootWorldObject.transform);
+                        break;
+                };
             }
+
+            if (worldObjectGameObject == null)
+            {
+                worldObjectGameObject = CreateGenericWorldObject(worldObjectModel, rootWorldObject.transform, LithtechTags.NoRayCast);
+            }
+
+            worldObjectLookups.Add(worldObjectModel.UniqueName, worldObjectGameObject);
 
             //ProcessWorldObject(worldObjectModel);
         }

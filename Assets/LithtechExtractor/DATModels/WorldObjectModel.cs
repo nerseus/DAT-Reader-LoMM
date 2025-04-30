@@ -70,7 +70,7 @@ public class WorldObjectModel
         {
             if (name == null)
             {
-                name = GetStringValue("Name");
+                name = GetStringPropValue("Name");
             }
 
             return name;
@@ -111,21 +111,28 @@ public class WorldObjectModel
     public float PlayerNumber { get { FlattenProperties(); return playerNumber; } }
     public float TeamNumber { get { FlattenProperties(); return teamNumber; } }
 
-    private bool? GetBoolValue(string propName)
+    public bool? GetBoolPropValue(string propName)
     {
         return options.TryGetValue(propName, out var value) && value is bool boolVal
             ? boolVal
             : null;
     }
 
-    private float? GetFloatValue(string propName)
+    public float? GetFloatPropValue(string propName)
     {
         return options.TryGetValue(propName, out var value) && value is float floatVal
             ? floatVal
             : null;
     }
 
-    private float? GetFloatValueFromUInt(string propName)
+    public uint? GetUIntPropValue(string propName)
+    {
+        return options.TryGetValue(propName, out var value) && value is uint uintVal
+            ? uintVal
+            : null;
+    }
+
+    public float? GetFloatValueFromUIntProp(string propName)
     {
         uint? tempVal = options.TryGetValue(propName, out var value) && value is uint uintVal
             ? uintVal
@@ -136,29 +143,29 @@ public class WorldObjectModel
         var bytes = BitConverter.GetBytes(tempVal.Value);
         return BitConverter.ToSingle(bytes, 0);
     }
-    
-    private string GetStringValue(string propName)
+
+    public string GetStringPropValue(string propName)
     {
         return options.TryGetValue(propName, out var value)
             ? value?.ToString()
             : null;
     }
 
-    private LTTypes.LTVector GetVectorValue(string propName)
+    public LTTypes.LTVector GetVectorPropValue(string propName)
     {
         return options.TryGetValue(propName, out var value) && value is LTTypes.LTVector vec
             ? vec
             : default(LTTypes.LTVector);
     }
 
-    private LTTypes.LTRotation GetRotationValue(string propName)
+    public LTTypes.LTRotation GetRotationPropValue(string propName)
     {
         return options.TryGetValue(propName, out var value) && value is LTTypes.LTRotation rot
             ? rot
             : default(LTTypes.LTRotation);
     }
 
-    private Vector3? GetVector3Value(string propName)
+    public Vector3? GetVector3PropValue(string propName)
     {
         LTTypes.LTVector? tempVal = options.TryGetValue(propName, out var value) && value is LTTypes.LTVector vec
             ? vec
@@ -169,7 +176,7 @@ public class WorldObjectModel
         return tempVal.Value;
     }
 
-    private Quaternion? GetQuaternionValue(string propName)
+    public Quaternion? GetQuaternionPropValue(string propName)
     {
         LTTypes.LTRotation? tempVal = options.TryGetValue(propName, out var value) && value is LTTypes.LTRotation rot
             ? rot
@@ -184,41 +191,41 @@ public class WorldObjectModel
     {
         if (flattened) return;
 
-        skyObjectName = GetStringValue("SkyObjectName");
-        originalPosition = GetVectorValue("Pos");
-        position = GetVector3Value("Pos");
-        originalRotation = GetRotationValue("Rotation");
-        rotation = GetQuaternionValue("Rotation");
+        skyObjectName = GetStringPropValue("SkyObjectName");
+        originalPosition = GetVectorPropValue("Pos");
+        position = GetVector3PropValue("Pos");
+        originalRotation = GetRotationPropValue("Rotation");
+        rotation = GetQuaternionPropValue("Rotation");
         rotationInDegrees = rotation.HasValue ? new Vector3(rotation.Value.x * Mathf.Rad2Deg, rotation.Value.y * Mathf.Rad2Deg, rotation.Value.z * Mathf.Rad2Deg) : null;
-        hasGravity = GetBoolValue("Gravity");
-        solid = GetBoolValue("Solid") ?? false;
-        visible = GetBoolValue("Visible") ?? false;
-        hidden = GetBoolValue("Hidden") ?? false;
-        rayhit = GetBoolValue("Rayhit") ?? false;
-        shadow = GetBoolValue("Shadow") ?? false;
-        transparent = GetBoolValue("Transparent") ?? false;
-        showSurface = GetBoolValue("ShowSurface") ?? false;
-        useRotation = GetBoolValue("UseRotation") ?? false;
-        moveToFloor = GetBoolValue("MoveToFloor");
-        weaponType = GetStringValue("WeaponType");
-        scale = GetFloatValue("Scale");
-        surfaceAlpha = GetFloatValue("SurfaceAlpha");
+        hasGravity = GetBoolPropValue("Gravity");
+        solid = GetBoolPropValue("Solid") ?? false;
+        visible = GetBoolPropValue("Visible") ?? false;
+        hidden = GetBoolPropValue("Hidden") ?? false;
+        rayhit = GetBoolPropValue("Rayhit") ?? false;
+        shadow = GetBoolPropValue("Shadow") ?? false;
+        transparent = GetBoolPropValue("Transparent") ?? false;
+        showSurface = GetBoolPropValue("ShowSurface") ?? false;
+        useRotation = GetBoolPropValue("UseRotation") ?? false;
+        moveToFloor = GetBoolPropValue("MoveToFloor");
+        weaponType = GetStringPropValue("WeaponType");
+        scale = GetFloatPropValue("Scale");
+        surfaceAlpha = GetFloatPropValue("SurfaceAlpha");
 
-        spriteSurfaceName = GetStringValue("SpriteSurfaceName");
-        surfaceColor1 = GetVector3Value("SurfaceColor1");
-        surfaceColor1 = GetVector3Value("SurfaceColor1");
-        viscosity = GetFloatValue("Viscosity");
+        spriteSurfaceName = GetStringPropValue("SpriteSurfaceName");
+        surfaceColor1 = GetVector3PropValue("SurfaceColor1");
+        surfaceColor1 = GetVector3PropValue("SurfaceColor1");
+        viscosity = GetFloatPropValue("Viscosity");
 
-        teamNumber = GetFloatValueFromUInt("TeamNbr") ?? 0f;
-        playerNumber = GetFloatValueFromUInt("PlayerNbr") ?? 0f;
+        teamNumber = GetFloatValueFromUIntProp("TeamNbr") ?? 0f;
+        playerNumber = GetFloatValueFromUIntProp("PlayerNbr") ?? 0f;
 
-        originalFilename = GetStringValue("Filename");
+        originalFilename = GetStringPropValue("Filename");
         if (originalFilename != null)
         {
             filename = Path.Combine(originalFilename, string.Empty);
             filenameLowercase = filename.ConvertFolderSeperators().ToLower();
         }
-        skin = GetStringValue("Skin");
+        skin = GetStringPropValue("Skin");
 
         skinsLowercase = new List<string>();
 
@@ -233,6 +240,6 @@ public class WorldObjectModel
             isABC = Path.GetExtension(filename).ToLower() == ".abc";
         }
 
-        index = GetFloatValueFromUInt("Index");
+        index = GetFloatValueFromUIntProp("Index");
     }
 }
